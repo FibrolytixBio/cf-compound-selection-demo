@@ -47,7 +47,6 @@ export default function AnalyzePage() {
 
       const data = await response.json();
       console.log("Analysis result:", data);
-      console.log
       setResult({
         compound_prioritization: {
           result: {

@@ -29,7 +29,7 @@ interface ToxicityScreeningResult {
   trajectory: Trajectory;
 }
 
-interface AnalysisResult {
+export interface AnalysisResult {
   compound_prioritization: {
     result: CompoundPrioritizationResult;
     sub_agents: {

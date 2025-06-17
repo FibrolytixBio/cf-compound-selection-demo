@@ -4,6 +4,7 @@ import { useAnalysis } from "@/context/AnalysisContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/navbar";
+import { AnalysisResult } from "@/context/AnalysisContext";
 
 export default function ResultPage() {
   const { result } = useAnalysis();
@@ -30,8 +31,8 @@ export default function ResultPage() {
   );
 }
 
-function ResultContent({ result }: { result: any }) {
-  const [selectedTrajectory, setSelectedTrajectory] = useState<any>(null);
+function ResultContent({ result }: { result: AnalysisResult }) {
+  const [selectedTrajectory, setSelectedTrajectory] = useState<Record<string, any> | null>(null);
 
   const compoundResult = result.compound_prioritization.result;
   const efficacyResult = result.compound_prioritization.sub_agents.cf_efficacy.result;
@@ -78,7 +79,7 @@ function ResultContent({ result }: { result: any }) {
           </div>
           {efficacyResult.trajectory && (
             <button
-              onClick={() => setSelectedTrajectory(efficacyResult.trajectory)}
+              onClick={() => setSelectedTrajectory(efficacyResult.trajectory!)}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
             >
               See Trajectory
@@ -105,7 +106,7 @@ function ResultContent({ result }: { result: any }) {
           </div>
           {toxicityResult.trajectory && (
             <button
-              onClick={() => setSelectedTrajectory(toxicityResult.trajectory)}
+              onClick={() => setSelectedTrajectory(toxicityResult.trajectory!)}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
             >
               See Trajectory
@@ -125,9 +126,9 @@ function ResultContent({ result }: { result: any }) {
   );
 }
 
-function TrajectoryModal({ trajectory, onClose }: { trajectory: any; onClose: () => void }) {
+function TrajectoryModal({ trajectory, onClose }: { trajectory: Record<string, any>; onClose: () => void }) {
   // Function to parse observation strings
-  const parseTrajectoryData = (trajectory: any) => {
+  const parseTrajectoryData = (trajectory: Record<string, any>) => {
     const parsed = { ...trajectory };
     
     // Find all observation keys and parse their values
@@ -135,21 +136,27 @@ function TrajectoryModal({ trajectory, onClose }: { trajectory: any; onClose: ()
       if (key.startsWith('observation_')) {
         try {
           // Remove escape characters and parse newlines
-          const cleanedValue = parsed[key]
-            .replace(/\\"/g, '"')  // Remove escaped quotes
-            .replace(/\\n/g, '\n'); // Convert \n to actual newlines
-          
-          // Try to parse as JSON if it looks like JSON
-          if (cleanedValue.trim().startsWith('{') || cleanedValue.trim().startsWith('[')) {
-            parsed[key] = JSON.parse(cleanedValue);
-          } else {
-            parsed[key] = cleanedValue;
+          const value = parsed[key];
+          if (typeof value === 'string') {
+            const cleanedValue = value
+              .replace(/\\"/g, '"')  // Remove escaped quotes
+              .replace(/\\n/g, '\n'); // Convert \n to actual newlines
+            
+            // Try to parse as JSON if it looks like JSON
+            if (cleanedValue.trim().startsWith('{') || cleanedValue.trim().startsWith('[')) {
+              parsed[key] = JSON.parse(cleanedValue);
+            } else {
+              parsed[key] = cleanedValue;
+            }
           }
-        } catch (error) {
+        } catch {
           // If parsing fails, just clean the string
-          parsed[key] = parsed[key]
-            .replace(/\\"/g, '"')
-            .replace(/\\n/g, '\n');
+          const value = parsed[key];
+          if (typeof value === 'string') {
+            parsed[key] = value
+              .replace(/\\"/g, '"')
+              .replace(/\\n/g, '\n');
+          }
         }
       }
     });
