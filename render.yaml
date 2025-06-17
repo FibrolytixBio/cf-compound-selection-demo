@@ -13,3 +13,6 @@ services:
     startCommand: |
       cd backend
       uv run uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PORT
+        value: 10000
