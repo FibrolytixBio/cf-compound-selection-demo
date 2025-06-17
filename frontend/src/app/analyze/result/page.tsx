@@ -4,7 +4,6 @@ import { useAnalysis } from "@/context/AnalysisContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/navbar";
-import { AnalysisResult } from "@/context/AnalysisContext";
 
 export default function ResultPage() {
   const { result } = useAnalysis();
@@ -31,8 +30,8 @@ export default function ResultPage() {
   );
 }
 
-function ResultContent({ result }: { result: AnalysisResult }) {
-  const [selectedTrajectory, setSelectedTrajectory] = useState<Record<string, any> | null>(null);
+function ResultContent({ result }) {
+  const [selectedTrajectory, setSelectedTrajectory] = useState(null);
 
   const compoundResult = result.compound_prioritization.result;
   const efficacyResult = result.compound_prioritization.sub_agents.cf_efficacy.result;
@@ -79,7 +78,7 @@ function ResultContent({ result }: { result: AnalysisResult }) {
           </div>
           {efficacyResult.trajectory && (
             <button
-              onClick={() => setSelectedTrajectory(efficacyResult.trajectory!)}
+              onClick={() => setSelectedTrajectory(efficacyResult.trajectory)}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
             >
               See Trajectory
@@ -106,7 +105,7 @@ function ResultContent({ result }: { result: AnalysisResult }) {
           </div>
           {toxicityResult.trajectory && (
             <button
-              onClick={() => setSelectedTrajectory(toxicityResult.trajectory!)}
+              onClick={() => setSelectedTrajectory(toxicityResult.trajectory)}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm"
             >
               See Trajectory
@@ -126,9 +125,9 @@ function ResultContent({ result }: { result: AnalysisResult }) {
   );
 }
 
-function TrajectoryModal({ trajectory, onClose }: { trajectory: Record<string, any>; onClose: () => void }) {
+function TrajectoryModal({ trajectory, onClose }) {
   // Function to parse observation strings
-  const parseTrajectoryData = (trajectory: Record<string, any>) => {
+  const parseTrajectoryData = (trajectory) => {
     const parsed = { ...trajectory };
     
     // Find all observation keys and parse their values
