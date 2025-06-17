@@ -18,7 +18,7 @@ services:
         value: 10000
 
   - type: web
-    name: cf-compound-selection-frontend
+    name: cf-compound-selection-demo
     env: node
     plan: free
     buildCommand: |
@@ -30,4 +30,4 @@ services:
       npm start
     envVars:
       - key: NEXT_PUBLIC_BACKEND_URL
-        value: https://cf-compound-selection-backend.onrender.com
+        value: https://cf-compound-selection-backend-k50c.onrender.com
