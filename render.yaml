@@ -30,4 +30,4 @@ services:
       npm start
     envVars:
       - key: NEXT_PUBLIC_BACKEND_URL
-        value: https://fastapi-backend-nm6w.onrender.com
+        value: https://cf-compound-selection-backend.onrender.com
