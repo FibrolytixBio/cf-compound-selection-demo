@@ -30,7 +30,10 @@ app = FastAPI()
 # Add CORS middleware with more specific configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or ["https://nextjs-frontend.onrender.com"] for production
+    allow_origins=[
+        "https://cf-compound-selection-frontend.onrender.com",  # production
+        "http://localhost:3000",  # dev
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
