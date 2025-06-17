@@ -1,0 +1,70 @@
+from pathlib import Path
+
+import dspy
+from agentic_system.tools.tool_utils import get_mcp_tools
+
+from agentic_system.tools.search import search_web, search_pubmed_abstracts
+
+TOOLS = [search_web, search_pubmed_abstracts]
+
+import agentic_system.tools.chembl_mcp_server as chembl_mcp_server
+import agentic_system.tools.pubchem_mcp_server as pubchem_mcp_server
+
+MCP_SERVER_PATHS = [
+    Path(chembl_mcp_server.__file__).resolve(),
+    Path(pubchem_mcp_server.__file__).resolve(),
+]
+
+
+class EfficacyAssessment(dspy.Signature):
+    """Assess compound efficacy for reversing cardiac fibrosis"""
+
+    compound_name: str = dspy.InputField(
+        desc="Name of the compound to assess efficacy for."
+    )
+    predicted_efficacy: float = dspy.OutputField(
+        desc="""
+        Esimate the compound efficacy for reversing human cardiac fibrosis on a scale of 0-1.
+        A score of 0 indicates no efficacy, while a score of 1 indicates complete efficacy.
+        """
+    )
+    confidence: float = dspy.OutputField(
+        desc="""
+        Confidence as probability (0-1) that predicted remaining cell count is accurate.
+        Based on the availability, quality, and relevance of the data used to make the prediction.
+        """
+    )
+
+
+class CFEfficacyAgent(dspy.Module):
+    def __init__(self):
+        super().__init__()
+
+        tools = []
+        for mcp_server in MCP_SERVER_PATHS:
+            tools.extend(get_mcp_tools(mcp_server))
+        for tool in TOOLS:
+            tools.append(tool)
+
+        self.agent = dspy.ReAct(
+            EfficacyAssessment,
+            tools=tools,
+            max_iters=5,
+        )
+
+    def forward(self, compound_name):
+        return self.agent(compound_name=compound_name)
+
+
+if __name__ == "__main__":
+    import dotenv
+
+    dotenv.load_dotenv("../../../.env")
+
+    dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5))
+
+    agent = CFEfficacyAgent()
+    result = agent.forward(compound_name="Givinostat")
+    print(result)
+
+    dspy.inspect_history(n=5)
