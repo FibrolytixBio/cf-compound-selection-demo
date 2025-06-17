@@ -7,8 +7,9 @@ services:
       cd backend
       pip install uv
       uv venv
-      uv sync
+      source .venv/bin/activate
       uv pip install -e .
+      uv sync
     startCommand: |
       cd backend
       uv run uvicorn api:app --host 0.0.0.0 --port $PORT

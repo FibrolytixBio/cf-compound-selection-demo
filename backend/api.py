@@ -1,8 +1,9 @@
 import logging
+import os
 
 
 from pydantic import BaseModel
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 import dspy
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +18,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load environment variables from current directory
-load_dotenv(".env")
+dotenv_path = find_dotenv(".env")
+if dotenv_path:
+    load_dotenv(".env")
+else:
+    logger.warning("No .env file found. Environment variables may not be set.")
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -25,22 +30,10 @@ app = FastAPI()
 # Add CORS middleware with more specific configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "https://birdhouse-omega.vercel.app",
-        "https://cf-compound-selection.vercel.app",
-    ],  # Frontend URL
+    allow_origins=["*"],  # or ["https://nextjs-frontend.onrender.com"] for production
     allow_credentials=True,
-    allow_methods=[
-        "GET",
-        "POST",
-        "PUT",
-        "DELETE",
-        "OPTIONS",
-    ],  # Explicitly list allowed methods
+    allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 
