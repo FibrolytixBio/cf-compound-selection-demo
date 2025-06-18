@@ -28,7 +28,7 @@ export default function AnalyzePage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/prioritize_compound`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}`,
         {
           method: "POST",
           headers: {

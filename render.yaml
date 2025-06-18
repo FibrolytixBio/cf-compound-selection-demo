@@ -1,23 +1,5 @@
 services:
   - type: web
-    name: cf-compound-selection-backend
-    env: python
-    plan: free
-    buildCommand: |
-      cd backend
-      pip install uv
-      uv venv
-      source .venv/bin/activate
-      uv pip install -e .
-      uv sync
-    startCommand: |
-      cd backend
-      uv run uvicorn api:app --host 0.0.0.0 --port $PORT
-    envVars:
-      - key: PORT
-        value: 10000
-
-  - type: web
     name: cf-compound-selection-demo
     env: node
     plan: free
@@ -30,4 +12,4 @@ services:
       npm start
     envVars:
       - key: NEXT_PUBLIC_BACKEND_URL
-        value: https://cf-compound-selection-backend-k50c.onrender.com
+        value: https://rsk119--compound-prioritization-prioritize-compound.modal.run
