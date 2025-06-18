@@ -4,9 +4,7 @@
 
 ```sh
 # set up dependencies
-uv venv
 uv sync
-uv pip install -e .
 ```
 
 ## See examples

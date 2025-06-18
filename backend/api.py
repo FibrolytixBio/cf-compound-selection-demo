@@ -1,5 +1,4 @@
 import logging
-import os
 
 
 from pydantic import BaseModel
@@ -44,7 +43,7 @@ class CompoundPrioritizationRequest(BaseModel):
     compound_name: str
 
 
-@app.post("/prioritize_compound")
+@app.post("/")
 def get_compound_prioritization(request: CompoundPrioritizationRequest):
     dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5))
 

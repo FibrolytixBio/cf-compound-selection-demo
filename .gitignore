@@ -2,10 +2,11 @@
 *__pycache__/
 *.egg-info
 *.DS_Store
-*.venv/
+*.vscode
 
-# env file
+# Backend files
 backend/.env
+*.venv/
 
 # Frontend build files
 frontend/.next/

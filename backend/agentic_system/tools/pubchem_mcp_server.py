@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from agentic_system.tools.tool_utils import mcp_tool_with_prefix
+from .tool_utils import mcp_tool_with_prefix
 
 
 # Create an MCP server

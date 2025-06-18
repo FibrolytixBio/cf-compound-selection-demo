@@ -1,10 +1,7 @@
 import dspy
-from agentic_system.agents.compound_prioritization.cf_efficacy.cf_efficacy_agent import (
-    CFEfficacyAgent,
-)
-from agentic_system.agents.compound_prioritization.toxicity_screening.toxicity_screening_agent import (
-    ScreeningToxicityAgent,
-)
+
+from .cf_efficacy.cf_efficacy_agent import CFEfficacyAgent
+from .toxicity_screening.toxicity_screening_agent import ScreeningToxicityAgent
 
 
 class CompoundPrioritization(dspy.Signature):
