@@ -1,17 +1,16 @@
 from pathlib import Path
 
-import dotenv
 import dspy
 
 
-from agentic_system.tools.tool_utils import get_mcp_tools
+from ....tools.tool_utils import get_mcp_tools
 
-from agentic_system.tools.search import search_web, search_pubmed_abstracts
+from ....tools.search import search_web, search_pubmed_abstracts
 
 TOOLS = [search_web, search_pubmed_abstracts]
 
-import agentic_system.tools.chembl_mcp_server as chembl_mcp_server
-import agentic_system.tools.pubchem_mcp_server as pubchem_mcp_server
+from ....tools import chembl_mcp_server
+from ....tools import pubchem_mcp_server
 
 MCP_SERVER_PATHS = [
     Path(chembl_mcp_server.__file__).resolve(),
@@ -60,6 +59,8 @@ class ScreeningToxicityAgent(dspy.Module):
 
 
 if __name__ == "__main__":
+    import dotenv
+
     dotenv.load_dotenv("../../../.env")
     dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5))
 
