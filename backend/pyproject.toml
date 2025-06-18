@@ -4,25 +4,19 @@ version         = "0.1.0"
 description     = "Backend for cardiac fibrosis compound selection system."
 readme          = "README.md"
 requires-python = ">=3.12"
-dependencies    = [
-  "pydantic",
-  "mcp",
-  "dspy",
-  "httpx",
-  "jupyter",
-  "ipykernel",
-  "dotenv",
-  "pubmedclient",
-  "fastapi",
-  "modal"
+dependencies = [
+    "pydantic",
+    "mcp",
+    "dspy",
+    "httpx",
+    "jupyter",
+    "ipykernel",
+    "python-dotenv",
+    "pubmedclient",
+    "fastapi",
+    "uvicorn",
+    "modal"
 ]
-
-[build-system]
-requires      = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-package-dir = {"" = "."}
 
 [tool.ruff]
 exclude = []

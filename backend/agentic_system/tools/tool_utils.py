@@ -37,9 +37,25 @@ def get_mcp_tools(path_to_mcp_server: str):
 
 async def get_mcp_tools_async(path_to_mcp_server: Path):
     """Returns List[dspy.Tool] of synchronous versions of MCP server tool for given path"""
+
+    # Convert file path to module path
+    # Remove .py extension and convert path separators to dots
+    module_path = str(path_to_mcp_server).replace(".py", "")
+
+    # Find the project root (where agentic_system package starts)
+    parts = module_path.split("/")
+    try:
+        # Find where 'agentic_system' appears in the path
+        agentic_index = parts.index("agentic_system")
+        # Take everything from 'agentic_system' onwards
+        module_name = ".".join(parts[agentic_index:])
+    except ValueError:
+        # Fallback: assume the path is relative to current working directory
+        module_name = module_path.replace("/", ".")
+
     server_params = StdioServerParameters(
         command="uv",
-        args=["run", str(path_to_mcp_server)],
+        args=["run", "-m", module_name],
         env=None,
     )
 
