@@ -15,7 +15,9 @@ dependencies = [
     "pubmedclient",
     "fastapi",
     "uvicorn",
-    "modal"
+    "modal",
+    "pandas",
+    "seaborn"
 ]
 
 [build-system]
