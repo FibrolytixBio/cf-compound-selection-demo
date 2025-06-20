@@ -25,8 +25,8 @@ class CompoundPrioritizationAgent(dspy.Module):
     def __init__(self):
         super().__init__()
         # Sub-agents
-        self.efficacy_agent = CFEfficacyAgent()
-        self.toxicity_agent = ScreeningToxicityAgent()
+        self.efficacy_agent = CFEfficacyAgent(max_iters=8)
+        self.toxicity_agent = ScreeningToxicityAgent(max_iters=8)
 
         # Coordination predictor
         self.coordinator = dspy.ChainOfThought(CompoundPrioritization)

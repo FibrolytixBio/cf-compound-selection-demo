@@ -39,7 +39,7 @@ class ToxicityScreening(dspy.Signature):
 
 
 class ScreeningToxicityAgent(dspy.Module):
-    def __init__(self):
+    def __init__(self, max_iters=5):
         super().__init__()
 
         tools = []
@@ -51,7 +51,7 @@ class ScreeningToxicityAgent(dspy.Module):
         self.agent = dspy.ReAct(
             ToxicityScreening,
             tools=tools,
-            max_iters=5,
+            max_iters=max_iters,
         )
 
     def forward(self, compound_name: str):

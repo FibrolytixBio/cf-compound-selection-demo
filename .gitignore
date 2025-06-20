@@ -7,6 +7,7 @@
 # Backend files
 backend/.env
 *.venv/
+backend/examples/compound_results
 
 # Frontend build files
 frontend/.next/

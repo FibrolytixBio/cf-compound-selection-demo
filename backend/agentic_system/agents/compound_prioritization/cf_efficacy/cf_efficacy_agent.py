@@ -38,7 +38,7 @@ class EfficacyAssessment(dspy.Signature):
 
 
 class CFEfficacyAgent(dspy.Module):
-    def __init__(self):
+    def __init__(self, max_iters=5):
         super().__init__()
 
         tools = []
@@ -50,7 +50,7 @@ class CFEfficacyAgent(dspy.Module):
         self.agent = dspy.ReAct(
             EfficacyAssessment,
             tools=tools,
-            max_iters=5,
+            max_iters=max_iters,
         )
 
     def forward(self, compound_name):
