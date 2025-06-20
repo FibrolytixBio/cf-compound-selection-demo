@@ -5,6 +5,13 @@
 ```sh
 # set up dependencies
 uv sync
+
+# for development import of package
+uv pip install -e .
+
+# configure jupyter notebook
+source .venv/bin/activate
+python -m ipykernel install --user --name=cf-compound-selection-backend --display-name "Python (cf-compound-selection-backend)"
 ```
 
 ## See examples

@@ -274,7 +274,7 @@ wheels = [
 [[package]]
 name = "cf-compound-selection-backend"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "dspy" },
     { name = "fastapi" },
