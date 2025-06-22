@@ -11,13 +11,9 @@ from pydantic import BaseModel, Field
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from .tool_utils import mcp_tool_with_prefix
 
-
-# Create an MCP server
+# Create an MCP server without the monkey patch
 mcp = FastMCP("PubChem MCP Server")
-# add server prefix to tool names
-mcp.tool = mcp_tool_with_prefix(mcp, "PUBCHEM")
 
 # PubChem API client configuration
 PUBCHEM_BASE_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug"
@@ -74,7 +70,7 @@ class SearchCompoundsRequest(BaseModel):
 
 
 @mcp.tool()
-async def search_compounds(request: SearchCompoundsRequest) -> Dict[str, Any]:
+async def PUBCHEM__search_compounds(request: SearchCompoundsRequest) -> Dict[str, Any]:
     """Search PubChem for compounds and return summary information."""
     endpoint = (
         f"/compound/{request.search_type}/{urllib.parse.quote(request.query)}/cids/JSON"
@@ -106,7 +102,7 @@ class CompoundInfoRequest(BaseModel):
 
 
 @mcp.tool()
-async def get_compound_info(request: CompoundInfoRequest) -> Dict[str, Any]:
+async def PUBCHEM__get_compound_info(request: CompoundInfoRequest) -> Dict[str, Any]:
     """Retrieve detailed information for a specific compound by PubChem CID"""
     response = await pubchem_client.get(
         f"/compound/cid/{request.cid}/{request.format.upper()}"
@@ -119,7 +115,7 @@ class SearchBySmilesRequest(BaseModel):
 
 
 @mcp.tool()
-async def search_by_smiles(request: SearchBySmilesRequest) -> Dict[str, Any]:
+async def PUBCHEM__search_by_smiles(request: SearchBySmilesRequest) -> Dict[str, Any]:
     """Search for compounds by SMILES string (exact match)"""
     endpoint = f"/compound/smiles/{urllib.parse.quote(request.smiles)}/cids/JSON"
     response = await pubchem_client.get(endpoint)
@@ -140,7 +136,7 @@ class SearchByInchiRequest(BaseModel):
 
 
 @mcp.tool()
-async def search_by_inchi(request: SearchByInchiRequest) -> Dict[str, Any]:
+async def PUBCHEM__search_by_inchi(request: SearchByInchiRequest) -> Dict[str, Any]:
     """Search for compounds by InChI or InChI key"""
     if request.inchi.startswith("InChI="):
         endpoint = f"/compound/inchi/{urllib.parse.quote(request.inchi)}/cids/JSON"
@@ -164,7 +160,7 @@ class SearchByCASRequest(BaseModel):
 
 
 @mcp.tool()
-async def search_by_cas_number(request: SearchByCASRequest) -> Dict[str, Any]:
+async def PUBCHEM__search_by_cas_number(request: SearchByCASRequest) -> Dict[str, Any]:
     """Search for compounds by CAS Registry Number"""
     endpoint = f"/compound/name/{urllib.parse.quote(request.cas_number)}/cids/JSON"
     res = await pubchem_client.get(endpoint)
@@ -184,7 +180,7 @@ class CompoundCIDRequest(BaseModel):
 
 
 @mcp.tool()
-async def get_compound_synonyms(request: CompoundCIDRequest) -> Dict[str, Any]:
+async def PUBCHEM__get_compound_synonyms(request: CompoundCIDRequest) -> Dict[str, Any]:
     """Get all names and synonyms for a compound"""
     endpoint = f"/compound/cid/{request.cid}/synonyms/JSON"
     response = await pubchem_client.get(endpoint)
@@ -205,7 +201,7 @@ class SearchSimilarCompoundsRequest(BaseModel):
 
 
 @mcp.tool()
-async def search_similar_compounds(
+async def PUBCHEM__search_similar_compounds(
     request: SearchSimilarCompoundsRequest,
 ) -> Dict[str, Any]:
     """Find chemically similar compounds using Tanimoto similarity."""
@@ -227,7 +223,7 @@ class SubstructureSearchRequest(BaseModel):
 
 
 @mcp.tool()
-async def substructure_search(request: SubstructureSearchRequest) -> Dict[str, Any]:
+async def PUBCHEM__substructure_search(request: SubstructureSearchRequest) -> Dict[str, Any]:
     """Find compounds containing a specific substructure"""
     endpoint = "/compound/substructure/smiles/JSON"
     data = {"smiles": request.smiles}
@@ -247,7 +243,7 @@ class SuperstructureSearchRequest(BaseModel):
 
 
 @mcp.tool()
-async def superstructure_search(request: SuperstructureSearchRequest) -> Dict[str, Any]:
+async def PUBCHEM__superstructure_search(request: SuperstructureSearchRequest) -> Dict[str, Any]:
     """Find larger compounds that contain the query structure"""
     endpoint = "/compound/superstructure/smiles/JSON"
     data = {"smiles": request.smiles}
@@ -283,9 +279,9 @@ class Get3DConformersRequest(BaseModel):
 
 
 @mcp.tool()
-async def get_3d_conformers(request: Get3DConformersRequest) -> Dict[str, Any]:
+async def PUBCHEM__get_3d_conformers(request: Get3DConformersRequest) -> Dict[str, Any]:
     """Get 3D conformer data and structural information"""
-    return await get_compound_properties(request.cid, request.properties)
+    return await PUBCHEM__get_compound_properties(CompoundPropertiesRequest(cid=request.cid, properties=request.properties))
 
 
 class AnalyzeStereochemistryRequest(BaseModel):
@@ -305,11 +301,11 @@ class AnalyzeStereochemistryRequest(BaseModel):
 
 
 @mcp.tool()
-async def analyze_stereochemistry(
+async def PUBCHEM__analyze_stereochemistry(
     request: AnalyzeStereochemistryRequest,
 ) -> Dict[str, Any]:
     """Analyze stereochemistry, chirality, and isomer information"""
-    return await get_compound_properties(request.cid, request.properties)
+    return await PUBCHEM__get_compound_properties(CompoundPropertiesRequest(cid=request.cid, properties=request.properties))
 
 
 # helper function to poll for results
@@ -355,7 +351,7 @@ class CompoundPropertiesRequest(BaseModel):
 
 
 @mcp.tool()
-async def get_compound_properties(request: CompoundPropertiesRequest) -> Dict[str, Any]:
+async def PUBCHEM__get_compound_properties(request: CompoundPropertiesRequest) -> Dict[str, Any]:
     """Get compound properties (MW, logP, TPSA, etc.)"""
     joined_props = ",".join(request.properties)
     endpoint = f"/compound/cid/{request.cid}/property/{joined_props}/JSON"
@@ -381,11 +377,11 @@ class PharmacophoreFeaturesRequest(BaseModel):
 
 
 @mcp.tool()
-async def get_pharmacophore_features(
+async def PUBCHEM__get_pharmacophore_features(
     request: PharmacophoreFeaturesRequest,
 ) -> Dict[str, Any]:
     """Get pharmacophore features and binding site information"""
-    return await get_compound_properties(request.cid, request.properties)
+    return await PUBCHEM__get_compound_properties(CompoundPropertiesRequest(cid=request.cid, properties=request.properties))
 
 
 # # ==================== Bioassay & Activity Data ====================
@@ -405,7 +401,7 @@ class BioassayResultsRequest(BaseModel):
 
 
 @mcp.tool()
-async def get_bioassay_results(request: BioassayResultsRequest) -> Dict[str, Any]:
+async def PUBCHEM__get_bioassay_results(request: BioassayResultsRequest) -> Dict[str, Any]:
     """Get all bioassay results and activities for a compound"""
     endpoint = f"/compound/cid/{request.cid}/assaysummary/JSON"
     response = await pubchem_client.get(
@@ -420,7 +416,7 @@ class BioassayInfoRequest(BaseModel):
 
 
 @mcp.tool()
-async def get_bioassay_info(request: BioassayInfoRequest) -> Dict[str, Any]:
+async def PUBCHEM__get_bioassay_info(request: BioassayInfoRequest) -> Dict[str, Any]:
     """Get detailed information for a specific bioassay by AID"""
     response = await pubchem_client.get(f"/assay/aid/{request.aid}/description/JSON")
     return response
@@ -434,7 +430,7 @@ class CompoundViewerRequest(BaseModel):
 
 
 @mcp.tool()
-async def get_safety_data(request: CompoundViewerRequest) -> Dict[str, Any]:
+async def PUBCHEM__get_safety_data(request: CompoundViewerRequest) -> Dict[str, Any]:
     """Get GHS pictograms, signal word, hazard/precaution codes, etc."""
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{request.cid}/JSON"
     response = await pubchem_client.client.get(
@@ -444,7 +440,7 @@ async def get_safety_data(request: CompoundViewerRequest) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def get_toxicity_data(request: CompoundViewerRequest) -> Dict[str, Any]:
+async def PUBCHEM__get_toxicity_data(request: CompoundViewerRequest) -> Dict[str, Any]:
     """Get toxicity information for the compound"""
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{request.cid}/JSON"
     response = await pubchem_client.client.get(url, params={"heading": "Toxicity"})
@@ -452,7 +448,7 @@ async def get_toxicity_data(request: CompoundViewerRequest) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def get_drug_medication_data(request: CompoundViewerRequest) -> Dict[str, Any]:
+async def PUBCHEM__get_drug_medication_data(request: CompoundViewerRequest) -> Dict[str, Any]:
     """Get drug medication data for the compound"""
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{request.cid}/JSON"
     response = await pubchem_client.client.get(
@@ -462,7 +458,7 @@ async def get_drug_medication_data(request: CompoundViewerRequest) -> Dict[str, 
 
 
 @mcp.tool()
-async def get_pharmocology_biochemistry_data(
+async def PUBCHEM__get_pharmocology_biochemistry_data(
     request: CompoundViewerRequest,
 ) -> Dict[str, Any]:
     """Get pharmacology and biochemistry data for the compound"""
