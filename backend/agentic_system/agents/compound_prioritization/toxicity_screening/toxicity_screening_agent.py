@@ -38,7 +38,7 @@ class ToxicityScreening(dspy.Signature):
     )
 
 
-class ScreeningToxicityAgent(dspy.Module):
+class ToxicityScreeningAgent(dspy.Module):
     def __init__(self, max_iters=5):
         super().__init__()
 
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5))
 
     all_tools = get_mcp_tools(MCP_SERVER_PATHS[0])
-    agent = ScreeningToxicityAgent(tools=all_tools)
+    agent = ToxicityScreeningAgent(tools=all_tools)
     result = agent.forward(compound_name="Givinostat")
 
     print(result)
