@@ -1,0 +1,24 @@
+from dotenv import load_dotenv
+import dspy
+import mlflow
+
+from agentic_system.agents.compound_prioritization.toxicity_screening.toxicity_screening_agent import (
+    ToxicityScreeningAgent,
+)
+
+# NOTE: Start MLflow server with:
+# mlflow server --backend-store-uri sqlite:///mydb.sqlite
+# Tell MLflow about the server URI.
+mlflow.set_tracking_uri("http://127.0.0.1:5000")
+# Create a unique name for your experiment.
+mlflow.set_experiment("DSPy")
+mlflow.autolog()
+
+load_dotenv("../.env")
+dspy.configure(lm=dspy.LM("gemini/gemini-2.5-pro", temperature=0.5, cache=False))
+
+COMPOUND = "Etomidate"
+
+agent = ToxicityScreeningAgent(max_iters=10)
+result = agent.forward(compound_name=COMPOUND)
+print(result)

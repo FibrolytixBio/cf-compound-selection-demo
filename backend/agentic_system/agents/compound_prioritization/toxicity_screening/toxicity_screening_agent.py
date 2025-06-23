@@ -6,8 +6,9 @@ import dspy
 from ....tools.tool_utils import get_mcp_tools
 
 from ....tools.search import search_web, search_pubmed_abstracts
+from ....tools.litl_tools import get_litl_pcr_reasoning
 
-TOOLS = [search_web, search_pubmed_abstracts]
+TOOLS = [search_web, search_pubmed_abstracts, get_litl_pcr_reasoning]
 
 from ....tools import chembl_mcp_server
 from ....tools import pubchem_mcp_server
@@ -65,7 +66,7 @@ if __name__ == "__main__":
     dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5))
 
     all_tools = get_mcp_tools(MCP_SERVER_PATHS[0])
-    agent = ToxicityScreeningAgent(tools=all_tools)
+    agent = ToxicityScreeningAgent()
     result = agent.forward(compound_name="Givinostat")
 
     print(result)
