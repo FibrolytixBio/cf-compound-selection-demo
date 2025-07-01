@@ -23,7 +23,7 @@ def get_litl_pcr_reasoning(request: LITLPCRReasoningRequest) -> str:
 
     prompt = f"""
 You are a medicinal-chemistry expert helping an AI toxicity-screening agent determine percent-cells-remaining (PCR) for a compound in a screen.
-In this screen a 10 uM solution of the compound is suspending in DMSO and applied to well with primary human ventricular fibroblasts.
+In this screen a 10 uM solution of the compound is suspended in DMSO and applied to well with primary human ventricular fibroblasts.
 
 Below is experimental percent-cells-remaining (PCR) data from the same assay:
 
@@ -56,21 +56,23 @@ def get_predicted_efficacy_reasoning(request: EfficacyReasoningRequest) -> str:
     efficacy_df = pd.read_csv(LITL_DATA_PATH)  # assumed to be defined
     # format the reference data for the model
     ref_rows = [
-        f"Compound Name: {row.compound_name} | Efficacy: {row.predicted_efficacy:.2f}"
+        f"{row.compound_name} | {row.predicted_efficacy:.2f}"
         for _, row in efficacy_df.iterrows()
     ]
     efficacy_block = "\n".join(ref_rows)
 
     prompt = f"""
-You are an expert in cardiac fibrosis drug discovery. Below is a table showing real efficacy scores for compounds tested in a high-content screen. The assay measures reversal of fibrosis in human cardiac fibroblasts, where 0 is no efficacy and 1 is complete efficacy for reversing fibrosis.
+You are an expert in cardiac fibrosis drug discovery. Below is a table showing real efficacy scores for compounds tested in a high-content screen.
+In this screen a 10 uM solution of the compound is suspended in DMSO and applied to well with primary human ventricular fibroblasts.
+A score of 0 indicates no efficacy (no fibroblasts reversed), while a score of 1 indicates complete efficacy (all fibroblasts reversed).
 
-Compound | Efficacy (0–1), Confidence (0–1)  
+Compound | Efficacy (0–1)
 {efficacy_block}
 
 Task: For the query compound **{request.compound}**  
 1. Identify any reference compounds helpful for understanding efficacy with factors like similar mechanisms, molecular features, etc.
-2. Determine the relevance of the match, ex what is similar or different between the reference and query compounds for factors like binding mode, intracellular exposure, and cell-type dependence, etc?
-3. Explain the inference in 3-4 concise sentences. If no relevant compound exists in the prediction table, say: "No relevant compound found in prediction data."
+2. Determine the relevance of the match, ex what is similar or different between the reference and query compounds for factors like binding mode, intracellular behavior, cell-type dependence, etc?
+3. Give a detailed explanation of the inference for this new compound's efficacy in the same screen. If no relevant compound exists in the prediction table, say: "No relevant compound found in prediction data."
 
 Return only the reasoning string – no markdown, no extra commentary.
 """

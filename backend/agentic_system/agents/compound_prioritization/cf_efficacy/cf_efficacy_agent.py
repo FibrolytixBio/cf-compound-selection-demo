@@ -5,8 +5,9 @@ import dspy
 from ....tools.tool_utils import get_mcp_tools
 
 from ....tools.search import search_web, search_pubmed_abstracts
+from ....tools.litl_tools import get_predicted_efficacy_reasoning
 
-TOOLS = [search_web, search_pubmed_abstracts]
+TOOLS = [search_web, search_pubmed_abstracts, get_predicted_efficacy_reasoning]
 
 from ....tools import chembl_mcp_server
 from ....tools import pubchem_mcp_server
