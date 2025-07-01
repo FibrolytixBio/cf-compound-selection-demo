@@ -27,6 +27,7 @@ export default function AnalyzePage() {
     setLoadingMessage("Fetching data and running analysis...");
 
     try {
+      console.log("Calling backend:", process.env.NEXT_PUBLIC_BACKEND_URL);
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}`,
         {
