@@ -30,7 +30,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://cf-compound-selection-demo.onrender.com",  # production
+        "https://deploy-preview-3--cf-compound-selection-demo.netlify.app",  # production
         "http://localhost:3000",  # dev
     ],
     allow_credentials=True,
