@@ -9,9 +9,13 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
+from .tool_utils import mcp_tool_with_prefix
 
-# Create an MCP server without the monkey patch
+
+# Create an MCP server
 mcp = FastMCP("ChEMBL MCP Server")
+# add server prefix to tool names
+mcp.tool = mcp_tool_with_prefix(mcp, "CHEMBL")
 
 # ChEMBL API client configuration
 CHEMBL_BASE_URL = "https://www.ebi.ac.uk/chembl/api/data"
@@ -54,7 +58,7 @@ class CompoundSearchRequest(BaseModel):
 
 
 @mcp.tool()
-async def CHEMBL__search_compounds(request: CompoundSearchRequest) -> Dict[str, Any]:
+async def search_compounds(request: CompoundSearchRequest) -> Dict[str, Any]:
     """Search ChEMBL database for compounds by name, synonym, or identifier"""
     params = {
         "q": request.query,
@@ -78,7 +82,7 @@ class CompoundBioactivitiesRequest(BaseModel):
 
 
 @mcp.tool()
-async def CHEMBL__get_compound_bioactivities(
+async def get_compound_bioactivities(
     request: CompoundBioactivitiesRequest,
 ) -> Dict[str, Any]:
     """Retrieve all reported bioactivities for a given ChEMBL compound."""
@@ -99,7 +103,7 @@ class ActivityInfoRequest(BaseModel):
 
 
 @mcp.tool()
-async def CHEMBL__get_activity_info(request: ActivityInfoRequest) -> Dict[str, Any]:
+async def get_activity_info(request: ActivityInfoRequest) -> Dict[str, Any]:
     """Return the full ChEMBL activity record for a specific activity."""
     return await chembl_client.get(
         "/activity.json",
@@ -112,7 +116,7 @@ class AssayInfoRequest(BaseModel):
 
 
 @mcp.tool()
-async def CHEMBL__get_assay_info(request: AssayInfoRequest) -> Dict[str, Any]:
+async def get_assay_info(request: AssayInfoRequest) -> Dict[str, Any]:
     """Return ChEMBL assay metadata for a specific assay."""
     return await chembl_client.get(
         "/assay.json",
@@ -131,8 +135,8 @@ class CompoundRequest(BaseModel):
 
 
 @mcp.tool()
-async def CHEMBL__get_mechanisms_of_action(request: CompoundRequest) -> Dict[str, Any]:
-    """Return ChEMBL's curated mechanism of action data for a given compound."""
+async def get_mechanisms_of_action(request: CompoundRequest) -> Dict[str, Any]:
+    """Return ChEMBL’s curated mechanism of action data for a given compound."""
     return await chembl_client.get(
         "/mechanism.json",
         params={
@@ -143,8 +147,8 @@ async def CHEMBL__get_mechanisms_of_action(request: CompoundRequest) -> Dict[str
 
 
 @mcp.tool()
-async def CHEMBL__get_molecule_info(request: CompoundRequest) -> Dict[str, Any]:
-    """Return ChEMBL's curated properties and metadata for a given compound, including calculated drug properties."""
+async def get_molecule_info(request: CompoundRequest) -> Dict[str, Any]:
+    """Return ChEMBL’s curated properties and metadata for a given compound, including calculated drug properties."""
     return await chembl_client.get(
         "/molecule.json",
         params={
@@ -155,7 +159,7 @@ async def CHEMBL__get_molecule_info(request: CompoundRequest) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def CHEMBL__get_drug_info(request: CompoundRequest) -> Dict[str, Any]:
+async def get_drug_info(request: CompoundRequest) -> Dict[str, Any]:
     """Return drug info for a given compound, including drug name, type, and status."""
     return await chembl_client.get(
         "/drug.json",
@@ -167,7 +171,7 @@ async def CHEMBL__get_drug_info(request: CompoundRequest) -> Dict[str, Any]:
 
 
 @mcp.tool()
-async def CHEMBL__get_drug_indications(request: CompoundRequest) -> Dict[str, Any]:
+async def get_drug_indications(request: CompoundRequest) -> Dict[str, Any]:
     """Return drug indications for a given compound, including disease and max phase."""
     return await chembl_client.get(
         "/drug_indication.json",
@@ -179,7 +183,7 @@ async def CHEMBL__get_drug_indications(request: CompoundRequest) -> Dict[str, An
 
 
 @mcp.tool()
-async def CHEMBL__get_drug_warning(request: CompoundRequest) -> Dict[str, Any]:
+async def get_drug_warning(request: CompoundRequest) -> Dict[str, Any]:
     """Return drug warnings for a given compound."""
     return await chembl_client.get(
         "/drug_warning.json",
@@ -203,7 +207,7 @@ class TargetSearchRequest(BaseModel):
 
 
 @mcp.tool()
-async def CHEMBL__search_targets(request: TargetSearchRequest) -> Dict[str, Any]:
+async def search_targets(request: TargetSearchRequest) -> Dict[str, Any]:
     """Search ChEMBL database for biological targets by name, gene symbol, or identifier"""
     params = {
         "q": request.query,
@@ -223,7 +227,7 @@ class TargetInformationRequest(BaseModel):
 
 
 @mcp.tool()
-async def CHEMBL__get_target_information(request: TargetInformationRequest) -> Dict[str, Any]:
+async def get_target_information(request: TargetInformationRequest) -> Dict[str, Any]:
     """Return biological details for a ChEMBL target (e.g., UniProt ID, GO terms)."""
     return await chembl_client.get(
         "/target.json",
@@ -250,7 +254,7 @@ class ActiveCompoundsRequest(BaseModel):
 
 
 @mcp.tool()
-async def CHEMBL__get_active_compounds(request: ActiveCompoundsRequest) -> Dict[str, Any]:
+async def get_active_compounds(request: ActiveCompoundsRequest) -> Dict[str, Any]:
     """Retrieve active compounds against a specific ChEMBL target with a potency filter."""
     params = {
         "target_chembl_id": request.target_chembl_id,

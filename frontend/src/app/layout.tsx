@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "CF Compound Selection Demo",
   description: "Demo of agentic AI system for CF compound selection",
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
