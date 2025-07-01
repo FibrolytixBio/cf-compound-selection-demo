@@ -12,7 +12,7 @@ class LITLPCRReasoningRequest(BaseModel):
 
 
 def get_litl_pcr_reasoning(request: LITLPCRReasoningRequest) -> str:
-    """Get reasoning about a compound's percent cells remaining directly from experimental results. Use this first to understand if there is existing experimental data to ground the prediction."""
+    """Get reasoning about a compound's percent cells remaining directly from experimental results. Always use this first to understand if there is existing experimental data to ground the prediction."""
     litl_df = pd.read_csv(LITL_DATA_PATH)
     # format the reference data for the model
     ref_rows = [
