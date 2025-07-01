@@ -12,7 +12,7 @@ class LITLPCRReasoningRequest(BaseModel):
 
 
 def get_litl_pcr_reasoning(request: LITLPCRReasoningRequest) -> str:
-    """Get reasoning about a compound's percent cells remaining directly from experimental results. Always use this first to understand if there is existing experimental data to ground the prediction."""
+    """Get reasoning about a compound's percent cells remaining directly from experimental results. ALWAYS USE THIS TOOL FIRST TO UNDERSTAND IF THERE ARE RELEVANT EXPERIMENTAL RESULTS FOR THE COMPOUND."""
     litl_df = pd.read_csv(LITL_DATA_PATH)
     # format the reference data for the model
     ref_rows = [
@@ -52,7 +52,7 @@ class EfficacyReasoningRequest(BaseModel):
 
 
 def get_predicted_efficacy_reasoning(request: EfficacyReasoningRequest) -> str:
-    """Get reasoning about a compound's efficacy in reversing cardiac fibrosis based on predicted assay results. Use this to understand expected biological benefit grounded in AI-based efficacy models."""
+    """Get reasoning about a compound's efficacy in reversing cardiac fibrosis based on experimental results. ALWAYS USE THIS TOOL FIRST TO UNDERSTAND IF THERE ARE RELEVANT EXPERIMENTAL RESULTS FOR THE COMPOUND."""
     efficacy_df = pd.read_csv(LITL_DATA_PATH)  # assumed to be defined
     # format the reference data for the model
     ref_rows = [
@@ -68,7 +68,7 @@ Compound | Efficacy (0–1), Confidence (0–1)
 {efficacy_block}
 
 Task: For the query compound **{request.compound}**  
-1. Identify any reference compounds with similar mechanisms or molecular features.
+1. Identify any reference compounds helpful for understanding efficacy with factors like similar mechanisms, molecular features, etc.
 2. Determine the relevance of the match, ex what is similar or different between the reference and query compounds for factors like binding mode, intracellular exposure, and cell-type dependence, etc?
 3. Explain the inference in 3-4 concise sentences. If no relevant compound exists in the prediction table, say: "No relevant compound found in prediction data."
 
