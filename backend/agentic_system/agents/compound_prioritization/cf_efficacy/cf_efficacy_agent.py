@@ -18,15 +18,16 @@ MCP_SERVER_PATHS = [
 
 
 class EfficacyAssessment(dspy.Signature):
-    """Assess compound efficacy for reversing cardiac fibrosis"""
+    """Estimate efficacy of a compound for reversing cardiac fibrosis in a screening assay"""
 
     compound_name: str = dspy.InputField(
         desc="Name of the compound to assess efficacy for."
     )
     predicted_efficacy: float = dspy.OutputField(
         desc="""
-        Esimate the compound efficacy for reversing human cardiac fibrosis on a scale of 0-1.
-        A score of 0 indicates no efficacy, while a score of 1 indicates complete efficacy.
+        Esimate the compound efficacy (0-1) for reversing cardiac fibrosis in a screening assay.
+        In this screen a 10 uM solution of the compound is suspending in DMSO and applied to a well with primary human ventricular fibroblasts.
+        A score of 0 indicates no efficacy (no fibroblasts reversed), while a score of 1 indicates complete efficacy (all fibroblasts reversed).
         """
     )
     confidence: float = dspy.OutputField(

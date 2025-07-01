@@ -27,7 +27,7 @@ class ToxicityScreening(dspy.Signature):
     percent_remaining_cells: int = dspy.OutputField(
         desc="""
         Esimate the percent of cells remaining after the compound is applied in a screening assay.
-        In this screen a 10 uM solution of the compound is suspending in DMSO and applied to well with primary human ventricular fibroblasts.
+        In this screen a 10 uM solution of the compound is suspending in DMSO and applied to a well with primary human ventricular fibroblasts.
         """
     )
     confidence: float = dspy.OutputField(
