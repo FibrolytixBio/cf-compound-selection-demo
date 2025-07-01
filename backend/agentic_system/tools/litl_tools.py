@@ -31,9 +31,46 @@ Compound | PCR (%)
 {litl_block}
 
 Task: For the query compound **{request.compound}**  
-1. Identify any compounds in the table with a close mechanistic match (same target, target family, or well-known off-target that dominates toxicity).  
-2. Determine the relevance of the match with respect to the toxicity screen. What is similar or different between the reference and query compounds for factors like binding mode, intracellular exposure, and cell-type dependence?
-3. Explain the inference in 3-4 concise sentences. If no relevant compound exists in the assay data, simply say "No relevant compound found in assay data.".
+1. Identify any reference compounds with similar mechanisms or molecular features.
+2. Determine the relevance of the match, ex what is similar or different between the reference and query compounds for factors like binding mode, intracellular exposure, and cell-type dependence, etc?
+3. Explain the inference in 3-4 concise sentences. If no relevant compound exists in the prediction table, say: "No relevant compound found in prediction data."
+
+Return only the reasoning string – no markdown, no extra commentary.
+"""
+
+    response = litellm.completion(
+        model="o3",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response["choices"][0]["message"]["content"]
+
+
+class EfficacyReasoningRequest(BaseModel):
+    compound: str = Field(
+        description="Name of the compound to evaluate for reversing cardiac fibrosis using predicted efficacy scores."
+    )
+
+
+def get_predicted_efficacy_reasoning(request: EfficacyReasoningRequest) -> str:
+    """Get reasoning about a compound's efficacy in reversing cardiac fibrosis based on predicted assay results. Use this to understand expected biological benefit grounded in AI-based efficacy models."""
+    efficacy_df = pd.read_csv(LITL_DATA_PATH)  # assumed to be defined
+    # format the reference data for the model
+    ref_rows = [
+        f"Compound Name: {row.compound_name} | Efficacy: {row.predicted_efficacy:.2f}"
+        for _, row in efficacy_df.iterrows()
+    ]
+    efficacy_block = "\n".join(ref_rows)
+
+    prompt = f"""
+You are an expert in cardiac fibrosis drug discovery. Below is a table showing real efficacy scores for compounds tested in a high-content screen. The assay measures reversal of fibrosis in human cardiac fibroblasts, where 0 is no efficacy and 1 is complete efficacy for reversing fibrosis.
+
+Compound | Efficacy (0–1), Confidence (0–1)  
+{efficacy_block}
+
+Task: For the query compound **{request.compound}**  
+1. Identify any reference compounds with similar mechanisms or molecular features.
+2. Determine the relevance of the match, ex what is similar or different between the reference and query compounds for factors like binding mode, intracellular exposure, and cell-type dependence, etc?
+3. Explain the inference in 3-4 concise sentences. If no relevant compound exists in the prediction table, say: "No relevant compound found in prediction data."
 
 Return only the reasoning string – no markdown, no extra commentary.
 """
@@ -51,5 +88,7 @@ if __name__ == "__main__":
     load_dotenv(
         "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/.env"
     )
-    pcr_reasoning = get_litl_pcr_reasoning(compound="Tanespimycin")
-    print(pcr_reasoning)
+    efficacy_reasoning = get_predicted_efficacy_reasoning(
+        request=EfficacyReasoningRequest(compound="Tanespimycin")
+    )
+    print(efficacy_reasoning)
