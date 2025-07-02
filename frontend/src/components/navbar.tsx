@@ -4,22 +4,16 @@ import Image from "next/image";
 
 export default function Navbar() {
   return (
-    <nav className="mb-6 flex items-center">
+    <nav className="flex flex-col items-center">
       <Image
         src="/fb_logo.png"
         alt="Fibrolytix Bio Logo"
-        width={230}
+        width={300}
         height={60}
       />
-      <h1 className="text-2xl font-bold mx-4">X</h1>
-      <Image
-        src="/gt_logo.png"
-        alt="Greenwood Technologies Logo"
-        width={60}
-        height={60}
-        className="mr-2"
-      />
-      <h1 className="text-2xl font-bold">Greenwood Technologies</h1>
+      <h1 className="text-2xl my-6 font-bold text-center">
+        Cardiac Fibrosis Compound Selection System Demo
+      </h1>
     </nav>
   );
 }

@@ -99,8 +99,8 @@ export default function AnalyzePage() {
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="compound-name" className="mb-1 block font-semibold">
-              Compound Name
+            <Label htmlFor="compound-name" className="mb-4 block font-semibold">
+              Agentic system takes about 3 minutes per compound
             </Label>
             <Input
               id="compound-name"
