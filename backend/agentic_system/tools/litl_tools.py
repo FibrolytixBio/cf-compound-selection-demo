@@ -51,9 +51,10 @@ class EfficacyReasoningRequest(BaseModel):
     )
 
 
-def get_predicted_efficacy_reasoning(request: EfficacyReasoningRequest) -> str:
+def get_experimental_efficacy_reasoning(request: EfficacyReasoningRequest) -> str:
     """Get reasoning about a compound's efficacy in reversing cardiac fibrosis based on experimental results. ALWAYS USE THIS TOOL FIRST TO UNDERSTAND IF THERE ARE RELEVANT EXPERIMENTAL RESULTS FOR THE COMPOUND."""
-    efficacy_df = pd.read_csv(LITL_DATA_PATH)  # assumed to be defined
+    efficacy_df = pd.read_csv(LITL_DATA_PATH)
+    efficacy_df = efficacy_df[efficacy_df.compound_name != request.compound]
     # format the reference data for the model
     ref_rows = [
         f"{row.compound_name} | {row.predicted_efficacy:.2f}"
@@ -70,11 +71,31 @@ Compound | Efficacy (0–1)
 {efficacy_block}
 
 Task: For the query compound **{request.compound}**  
-1. Identify any reference compounds helpful for understanding efficacy with factors like similar mechanisms, molecular features, etc.
-2. Determine the relevance of the match, ex what is similar or different between the reference and query compounds for factors like binding mode, intracellular behavior, cell-type dependence, etc?
-3. Give a detailed explanation of the inference for this new compound's efficacy in the same screen. If no relevant compound exists in the prediction table, say: "No relevant compound found in prediction data."
+1. Identify any reference compounds helpful for understanding efficacy, focusing on factors like shared mechanisms, structural similarity, or prior usage in fibrosis contexts.
+2. Assess the relevance of each match by comparing key factors such as:
+- Target/pathway similarity
+- Binding mode
+- Phenotypic profile overlap
+- Subcellular localization
+- Cell-type specificity
+- (other relevant factors)
+3. Provide detailed inference/comparison notes for each relevant compound, explaining how it relates to the query compound's efficacy.
 
-Return only the reasoning string – no markdown, no extra commentary.
+If there are no relevant compounds, simply say: “No relevant compound found in experimental data.”
+
+Format the response as a table with columns for:
+Reference Compound | Efficacy Score (0–1) | Inference and Comparison Notes
+
+
+Ex:
+
+Query Compound: Tanespimycin
+
+| Reference Compound | Efficacy Score (0–1) | Inference and Comparison Notes |
+|--------------------|----------------------|--------------------------------|
+| Luminespib | 0.XX | Like Tanespimycin, it is a first-generation N-terminal Hsp90 ATP-site inhibitor. Both drugs share the same canonical binding mode in the Hsp90 pocket and drive degradation of the same client set (e.g., AKT, ERK, TGF-β pathway mediators) controlling fibroblast activation. Differences: (i) Tanespimycin requires NQO1-mediated bioactivation; Luminespib does not. (ii) Tanespimycin is a P-gp substrate with lower intracellular accumulation. (iii) Its quinone moiety may cause oxidative stress, confounding phenotype. Overall, Tanespimycin is expected to have slightly lower efficacy but still be among the top candidates due to shared mechanism. |
+
+Only include the table in the response – no markdown, no extra commentary.
 """
 
     response = litellm.completion(
@@ -90,7 +111,7 @@ if __name__ == "__main__":
     load_dotenv(
         "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/.env"
     )
-    efficacy_reasoning = get_predicted_efficacy_reasoning(
-        request=EfficacyReasoningRequest(compound="Tanespimycin")
+    efficacy_reasoning = get_experimental_efficacy_reasoning(
+        request=EfficacyReasoningRequest(compound="Finasteride")
     )
     print(efficacy_reasoning)
