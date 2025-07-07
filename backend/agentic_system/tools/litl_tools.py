@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 import pandas as pd
 import litellm
+from openai import OpenAI
 
 LITL_DATA_PATH = "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/agentic_system/tools/litl_data.csv"
 
@@ -52,7 +53,7 @@ class EfficacyReasoningRequest(BaseModel):
 
 
 def get_experimental_efficacy_reasoning(request: EfficacyReasoningRequest) -> str:
-    """Get reasoning about a compound's efficacy in reversing cardiac fibrosis based on experimental results. ALWAYS USE THIS TOOL FIRST TO UNDERSTAND IF THERE ARE RELEVANT EXPERIMENTAL RESULTS FOR THE COMPOUND."""
+    """Get reasoning about a compound's efficacy in reversing cardiac fibrosis based on experimental results."""
     efficacy_df = pd.read_csv(LITL_DATA_PATH)
     efficacy_df = efficacy_df[efficacy_df.compound_name != request.compound]
     # format the reference data for the model
@@ -98,11 +99,14 @@ Query Compound: Tanespimycin
 Only include the table in the response – no markdown, no extra commentary.
 """
 
-    response = litellm.completion(
+    client = OpenAI()
+
+    resp = client.responses.create(
         model="o3",
-        messages=[{"role": "user", "content": prompt}],
+        input=prompt,
+        # tools=[{"type": "web_search"}],
     )
-    return response["choices"][0]["message"]["content"]
+    return resp.output[1].content[0].text
 
 
 if __name__ == "__main__":

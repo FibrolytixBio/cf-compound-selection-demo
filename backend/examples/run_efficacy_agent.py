@@ -17,7 +17,7 @@ mlflow.autolog()
 load_dotenv("../.env")
 dspy.configure(lm=dspy.LM("gemini/gemini-2.5-pro", temperature=0.5, cache=False))
 
-COMPOUND = "Etomidate"
+COMPOUND = "Finasteride"
 
 agent = CFEfficacyAgent(max_iters=10)
 result = agent.forward(compound_name=COMPOUND)
