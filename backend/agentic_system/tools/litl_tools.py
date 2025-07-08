@@ -58,7 +58,7 @@ def get_experimental_efficacy_reasoning(request: EfficacyReasoningRequest) -> st
     efficacy_df = efficacy_df[efficacy_df.compound_name != request.compound]
     # format the reference data for the model
     ref_rows = [
-        f"{row.compound_name} | {row.predicted_efficacy:.2f}"
+        f"{row.compound_name} | {row.cf_efficacy:.2f}"
         for _, row in efficacy_df.iterrows()
     ]
     efficacy_block = "\n".join(ref_rows)

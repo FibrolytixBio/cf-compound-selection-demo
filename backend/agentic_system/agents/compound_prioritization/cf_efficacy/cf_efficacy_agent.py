@@ -21,8 +21,8 @@ MCP_SERVER_PATHS = [
 class EfficacyAssessment(dspy.Signature):
     """Estimate efficacy of a compound for reversing cardiac fibrosis in a screening assay
 
-    Always use the `get_experimental_efficacy_reasoning` tool first to understand if there are relevant experimental results for the compound,
-    but prioritize existing experimental data for this particular compound in other cardiac fibrosis assay sources.
+    Always use the `get_experimental_efficacy_reasoning` tool first (if it exists) to understand if there are relevant experimental results for the compound.
+    Always search for existing preclinical data on the compound in a cardiac fibrosis context and give this evidence the highest priority when making predictions.
     """
 
     compound_name: str = dspy.InputField(
