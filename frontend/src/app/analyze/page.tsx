@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Navbar from "@/components/navbar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAnalysis } from "@/context/AnalysisContext";
 import toast from "react-hot-toast";
 
@@ -15,6 +15,32 @@ export default function AnalyzePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Analyzing...");
   const [compoundName, setCompoundName] = useState("");
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  // Timer effect for loading progress
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isLoading) {
+      const startTime = Date.now();
+      interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setElapsedTime(elapsed);
+        
+        if (elapsed < 60) {
+          setLoadingMessage(`Running analysis... ${elapsed}s elapsed (usually takes ~3 minutes)`);
+        } else {
+          const minutes = Math.floor(elapsed / 60);
+          const seconds = elapsed % 60;
+          setLoadingMessage(`Running analysis... ${minutes}m ${seconds}s elapsed (usually takes ~3 minutes)`);
+        }
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isLoading]);
 
   const handlePrioritize = async () => {
     console.log("Prioritizing compound:", compoundName);
@@ -24,9 +50,12 @@ export default function AnalyzePage() {
       return;
     }
     setIsLoading(true);
-    setLoadingMessage("Fetching data and running analysis...");
 
     try {
+      // Create AbortController with a 5-minute timeout (300 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}`,
         {
@@ -37,8 +66,11 @@ export default function AnalyzePage() {
           body: JSON.stringify({
             compound_name: compoundName,
           }),
+          signal: controller.signal,
         }
       );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -79,12 +111,22 @@ export default function AnalyzePage() {
     } catch (error) {
       console.error("Error analyzing compound:", error);
       let errorMessage = "An unexpected error occurred.";
+      
       if (error instanceof Error) {
-        errorMessage = error.message;
+        if (error.name === 'AbortError') {
+          errorMessage = "Analysis timed out after 5 minutes. Please try again.";
+        } else if (error.message.includes('fetch')) {
+          errorMessage = "Network error: Unable to connect to the analysis service.";
+        } else {
+          errorMessage = error.message;
+        }
       }
+      
       toast.error(`Analysis Failed: ${errorMessage}`);
     } finally {
       setIsLoading(false);
+      setElapsedTime(0);
+      setLoadingMessage("Analyzing...");
     }
   };
 
@@ -99,9 +141,6 @@ export default function AnalyzePage() {
 
         <div className="space-y-4">
           <div>
-            <Label htmlFor="compound-name" className="mb-4 block font-semibold">
-              Agentic system takes about 3 minutes per compound
-            </Label>
             <Input
               id="compound-name"
               placeholder="Enter compound name (e.g., Givinostat)"
