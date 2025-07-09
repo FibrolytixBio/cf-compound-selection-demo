@@ -7,7 +7,7 @@ from ....tools.tool_utils import get_mcp_tools
 from ....tools.search import search_web, search_pubmed_abstracts
 from ....tools.litl_tools import get_experimental_efficacy_reasoning
 
-TOOLS = [search_web, search_pubmed_abstracts, get_experimental_efficacy_reasoning]
+TOOLS = [search_web, search_pubmed_abstracts]  # , get_experimental_efficacy_reasoning]
 
 from ....tools import chembl_mcp_server
 from ....tools import pubchem_mcp_server
@@ -22,7 +22,7 @@ class EfficacyAssessment(dspy.Signature):
     """Estimate efficacy of a compound for reversing cardiac fibrosis in a screening assay
 
     Always use the `get_experimental_efficacy_reasoning` tool first (if it exists) to understand if there are relevant experimental results for the compound.
-    Always search for existing preclinical data on the compound in a cardiac fibrosis context and give this evidence the highest priority when making predictions.
+    Always perform a search for existing preclinical data on the compound in a cardiac fibrosis context and give this evidence the highest priority when predicting efficacy.
     """
 
     compound_name: str = dspy.InputField(
