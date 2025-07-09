@@ -27,7 +27,7 @@ class ToxicityScreening(dspy.Signature):
     percent_remaining_cells: int = dspy.OutputField(
         desc="""
         Esimate the percent of cells remaining after the compound is applied in a screening assay.
-        In this screen a 10 uM solution of the compound is suspending in DMSO and applied to well with primary human ventricular fibroblasts.
+        In this screen a 10 uM solution of the compound is suspending in DMSO and applied to a well with primary human ventricular fibroblasts.
         """
     )
     confidence: float = dspy.OutputField(
@@ -38,8 +38,8 @@ class ToxicityScreening(dspy.Signature):
     )
 
 
-class ScreeningToxicityAgent(dspy.Module):
-    def __init__(self):
+class ToxicityScreeningAgent(dspy.Module):
+    def __init__(self, max_iters=5):
         super().__init__()
 
         tools = []
@@ -51,7 +51,7 @@ class ScreeningToxicityAgent(dspy.Module):
         self.agent = dspy.ReAct(
             ToxicityScreening,
             tools=tools,
-            max_iters=5,
+            max_iters=max_iters,
         )
 
     def forward(self, compound_name: str):
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5))
 
     all_tools = get_mcp_tools(MCP_SERVER_PATHS[0])
-    agent = ScreeningToxicityAgent(tools=all_tools)
+    agent = ToxicityScreeningAgent()
     result = agent.forward(compound_name="Givinostat")
 
     print(result)

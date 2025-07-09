@@ -5,8 +5,9 @@ import dspy
 from ....tools.tool_utils import get_mcp_tools
 
 from ....tools.search import search_web, search_pubmed_abstracts
+from ....tools.litl_tools import get_experimental_efficacy_reasoning
 
-TOOLS = [search_web, search_pubmed_abstracts]
+TOOLS = [search_web, search_pubmed_abstracts]  # , get_experimental_efficacy_reasoning]
 
 from ....tools import chembl_mcp_server
 from ....tools import pubchem_mcp_server
@@ -18,15 +19,20 @@ MCP_SERVER_PATHS = [
 
 
 class EfficacyAssessment(dspy.Signature):
-    """Assess compound efficacy for reversing cardiac fibrosis"""
+    """Estimate efficacy of a compound for reversing cardiac fibrosis in a screening assay
+
+    Always use the `get_experimental_efficacy_reasoning` tool first (if it exists) to understand if there are relevant experimental results for the compound.
+    Always perform a search for existing preclinical data on the compound in a cardiac fibrosis context and give this evidence the highest priority when predicting efficacy.
+    """
 
     compound_name: str = dspy.InputField(
         desc="Name of the compound to assess efficacy for."
     )
     predicted_efficacy: float = dspy.OutputField(
         desc="""
-        Esimate the compound efficacy for reversing human cardiac fibrosis on a scale of 0-1.
-        A score of 0 indicates no efficacy, while a score of 1 indicates complete efficacy.
+        Esimate the compound efficacy (0-1) for reversing cardiac fibrosis in a screening assay.
+        In this screen a 10 uM solution of the compound is suspending in DMSO and applied to a well with primary human ventricular fibroblasts.
+        A score of 0 indicates no efficacy (no fibroblasts reversed), while a score of 1 indicates complete efficacy (all fibroblasts reversed).
         """
     )
     confidence: float = dspy.OutputField(
@@ -38,7 +44,7 @@ class EfficacyAssessment(dspy.Signature):
 
 
 class CFEfficacyAgent(dspy.Module):
-    def __init__(self):
+    def __init__(self, max_iters=5):
         super().__init__()
 
         tools = []
@@ -50,7 +56,7 @@ class CFEfficacyAgent(dspy.Module):
         self.agent = dspy.ReAct(
             EfficacyAssessment,
             tools=tools,
-            max_iters=5,
+            max_iters=max_iters,
         )
 
     def forward(self, compound_name):

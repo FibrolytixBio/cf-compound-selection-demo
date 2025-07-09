@@ -28,9 +28,7 @@ def _initialize_if_needed():
             CompoundPrioritizationAgent,
         )
 
-        dspy.configure(
-            lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5)
-        )
+        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-pro", temperature=0.5))
         _agent = CompoundPrioritizationAgent()
         print("Agent initialized successfully")
 
