@@ -9,6 +9,7 @@ dependencies = [
     "mcp",
     "dspy==3.0.3",
     "httpx",
+    "tavily-python",
     "jupyter",
     "ipykernel",
     "python-dotenv",
