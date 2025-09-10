@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "pydantic",
     "mcp",
-    "dspy",
+    "dspy==3.0.3",
     "httpx",
     "jupyter",
     "ipykernel",

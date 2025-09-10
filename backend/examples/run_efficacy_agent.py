@@ -15,10 +15,12 @@ mlflow.set_experiment("DSPy")
 mlflow.autolog()
 
 load_dotenv("../.env")
-dspy.configure(lm=dspy.LM("gemini/gemini-2.5-pro", temperature=0.5, cache=False))
+dspy.configure(
+    lm=dspy.LM("gemini/gemini-2.5-pro", temperature=0.5, cache=True, rollout_id=2)
+)
 
 COMPOUND = "Luminespib"
 
-agent = CFEfficacyAgent(max_iters=10)
-result = agent.forward(compound_name=COMPOUND)
+agent = CFEfficacyAgent(max_iters=5)
+result = agent(compound_name=COMPOUND)
 print(result)
