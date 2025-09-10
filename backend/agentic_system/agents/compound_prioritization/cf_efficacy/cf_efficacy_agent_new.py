@@ -1,6 +1,7 @@
 import dspy
 
 from ....tools.chembl_tools import CHEMBL_TOOLS
+from ....tools.pubchem_tools import PUBCHEM_TOOLS
 
 
 class EfficacyAssessment(dspy.Signature):
@@ -32,7 +33,7 @@ class CFEfficacyAgent(dspy.Module):
     def __init__(self, max_iters=5):
         super().__init__()
 
-        tools = CHEMBL_TOOLS
+        tools = CHEMBL_TOOLS + PUBCHEM_TOOLS
 
         self.agent = dspy.ReAct(
             EfficacyAssessment,
@@ -49,7 +50,9 @@ if __name__ == "__main__":
 
     dotenv.load_dotenv("../../../.env")
 
-    dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5))
+    dspy.configure(
+        lm=dspy.LM("gemini/gemini-2.5-flash-lite", temperature=0.5, cache=False)
+    )
 
     agent = CFEfficacyAgent()
     result = agent.forward(compound_name="Givinostat")

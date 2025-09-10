@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """
-ChEMBL Standalone Functions - Standalone functions for ChEMBL chemical database queries
-
-This module provides clean standalone functions extracted from the ChEMBL MCP server.
-Functions use typed annotations for better IDE support and runtime validation.
+ChEMBL Standalone Tools - Synchronous functions with natural language outputs
 """
 
-from typing import Optional, Dict, Any, Annotated
-
+from typing import Optional, Dict, Any, List
 import httpx
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 
+# ChEMBL API client configuration
 CHEMBL_BASE_URL = "https://www.ebi.ac.uk/chembl/api/data"
 TIMEOUT = 30.0
 
@@ -20,326 +17,505 @@ class ChEMBLClient:
     """HTTP client for ChEMBL API interactions"""
 
     def __init__(self):
-        self.client = httpx.AsyncClient(
+        self.client = httpx.Client(
             base_url=CHEMBL_BASE_URL,
             timeout=TIMEOUT,
             headers={
-                "User-Agent": "ChEMBL-Functions/1.0.0",
+                "User-Agent": "ChEMBL-Tools/1.0.0",
                 "Accept": "application/json",
             },
         )
 
-    async def get(self, endpoint: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    def get(self, endpoint: str, params: Optional[Dict] = None) -> Dict[str, Any]:
         """Make GET request to ChEMBL API"""
-        response = await self.client.get(endpoint, params=params)
-        response.raise_for_status()
-        return response.json()
+        try:
+            response = self.client.get(endpoint, params=params)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            return {
+                "error": f"API error: {e.response.status_code} - {e.response.text[:100]}"
+            }
+        except Exception as e:
+            return {"error": f"Request failed: {str(e)}"}
 
 
 # Initialize the ChEMBL client
 chembl_client = ChEMBLClient()
 
+# ============================ Compound Search Tools =============================
 
-# ==================== Compound Search & Information ====================
+
+class CompoundSearchRequest(BaseModel):
+    query: str = Field(
+        description="Compound name, synonym, or identifier to search for"
+    )
+    limit: int = Field(
+        default=5, ge=1, le=10, description="Number of results to return (1-10)"
+    )
 
 
-async def search_compounds(
-    query: Annotated[
-        str,
-        Field(description="Search query (compound name, synonym, or identifier)"),
-    ],
-    limit: Annotated[
-        int,
-        Field(
-            default=10,
-            ge=1,
-            le=1000,
-            description="Number of results to return (1-1000)",
-        ),
-    ] = 10,
-) -> Dict[str, Any]:
-    """Search ChEMBL database for compounds by name, synonym, or identifier"""
+def search_chembl_id(request: CompoundSearchRequest) -> str:
+    """Search for ChEMBL IDs by compound name, synonym, or identifier. Returns only the ChEMBL IDs for efficient lookup."""
     params = {
-        "q": query,
-        "limit": limit,
+        "q": request.query,
+        "limit": request.limit,
     }
-    return await chembl_client.get("/molecule/search.json", params=params)
+    result = chembl_client.get("/molecule/search.json", params=params)
+
+    if "error" in result:
+        return f"Error searching for compound: {result['error']}"
+
+    molecules = result.get("molecules", [])
+    if not molecules:
+        return f"No compounds found matching '{request.query}'"
+
+    # Extract just the ChEMBL IDs and preferred names
+    compounds = []
+    for mol in molecules[: request.limit]:
+        chembl_id = mol.get("molecule_chembl_id", "Unknown")
+        pref_name = mol.get("pref_name", "No name")
+        compounds.append(f"{chembl_id} ({pref_name})")
+
+    return (
+        f"Found {len(compounds)} compound(s) matching '{request.query}': "
+        + ", ".join(compounds)
+    )
 
 
-async def get_compound_bioactivities(
-    chembl_id: Annotated[
-        str, Field(description="ChEMBL ID of the compound (e.g., CHEMBL25)")
-    ],
-    max_results: Annotated[
-        Optional[int],
-        Field(
-            default=10,
-            description="Maximum number of results to return (1–1000), lower values recommended",
-        ),
-    ] = 10,
-    activity_type: Annotated[
-        Optional[str],
-        Field(
-            default=None,
-            description="Standard activity type to filter by (e.g., IC50, Ki)",
-        ),
-    ] = None,
-    max_activity_value: Annotated[
-        Optional[float],
-        Field(
-            default=None,
-            description="Maximum allowed activity value (e.g., IC50 < X nM)",
-        ),
-    ] = None,
-) -> Dict[str, Any]:
-    """Retrieve all reported bioactivities for a given ChEMBL compound."""
+class CompoundPropertiesRequest(BaseModel):
+    chembl_id: str = Field(description="ChEMBL ID of the compound (e.g., CHEMBL25)")
+
+
+def get_compound_properties(request: CompoundPropertiesRequest) -> str:
+    """Get key physicochemical properties for a compound that are relevant for drug discovery."""
+    result = chembl_client.get(
+        "/molecule.json", params={"molecule_chembl_id": request.chembl_id, "limit": 1}
+    )
+
+    if "error" in result:
+        return f"Error retrieving properties: {result['error']}"
+
+    molecules = result.get("molecules", [])
+    if not molecules:
+        return f"No data found for {request.chembl_id}"
+
+    mol = molecules[0]
+    props = mol.get("molecule_properties", {})
+
+    if not props:
+        return f"{request.chembl_id} has no calculated properties available"
+
+    # Build natural language summary
+    summary_parts = [f"Properties of {request.chembl_id}:"]
+
+    # Add key properties with context
+    mw = props.get("mw_freebase")
+    if mw:
+        try:
+            mw_float = float(mw)
+            summary_parts.append(f"molecular weight {mw_float:.1f} Da")
+        except (ValueError, TypeError):
+            summary_parts.append(f"molecular weight {mw} Da")
+
+    logp = props.get("alogp")
+    if logp is not None:
+        try:
+            logp_float = float(logp)
+            lipophilicity = (
+                "hydrophilic"
+                if logp_float < 0
+                else "lipophilic"
+                if logp_float > 3
+                else "moderate lipophilicity"
+            )
+            summary_parts.append(f"ALogP {logp_float:.2f} ({lipophilicity})")
+        except (ValueError, TypeError):
+            summary_parts.append(f"ALogP {logp}")
+
+    tpsa = props.get("psa")
+    if tpsa:
+        try:
+            tpsa_float = float(tpsa)
+            permeability = (
+                "good"
+                if tpsa_float < 90
+                else "moderate"
+                if tpsa_float < 140
+                else "poor"
+            )
+            summary_parts.append(
+                f"TPSA {tpsa_float:.1f} Ų ({permeability} permeability expected)"
+            )
+        except (ValueError, TypeError):
+            summary_parts.append(f"TPSA {tpsa} Ų")
+
+    hbd = props.get("hbd")
+    hba = props.get("hba")
+    if hbd is not None and hba is not None:
+        summary_parts.append(f"{hbd} H-bond donors and {hba} H-bond acceptors")
+
+    rtb = props.get("rtb")
+    if rtb is not None:
+        flexibility = (
+            "rigid" if rtb <= 3 else "flexible" if rtb >= 7 else "moderate flexibility"
+        )
+        summary_parts.append(f"{rtb} rotatable bonds ({flexibility})")
+
+    ro5 = props.get("num_ro5_violations")
+    if ro5 is not None:
+        ro5_text = (
+            "compliant with Lipinski's Rule of Five"
+            if ro5 == 0
+            else f"has {ro5} Ro5 violation(s)"
+        )
+        summary_parts.append(ro5_text)
+
+    # Add molecular type
+    mol_type = mol.get("molecule_type")
+    if mol_type:
+        summary_parts.append(f"classified as {mol_type}")
+
+    return ". ".join(summary_parts) + "."
+
+
+class CompoundBioactivitiesRequest(BaseModel):
+    chembl_id: str = Field(description="ChEMBL ID of the compound (e.g., CHEMBL25)")
+    activity_type: Optional[str] = Field(
+        default=None, description="Filter by activity type (e.g., IC50, Ki, EC50)"
+    )
+    max_results: int = Field(
+        default=5, description="Maximum number of activities to summarize (1-10)"
+    )
+
+
+def get_compound_bioactivities_summary(request: CompoundBioactivitiesRequest) -> str:
+    """Get a summary of the most relevant bioactivities for a compound, focusing on potency data useful for drug discovery."""
     params = {
-        "molecule_chembl_id": chembl_id,
-        "limit": max_results,
+        "molecule_chembl_id": request.chembl_id,
+        "limit": 50,  # Get more initially to summarize better
     }
-    if activity_type is not None:
-        params["standard_type"] = activity_type
-    if max_activity_value is not None:
-        params["standard_value__lt"] = max_activity_value
+    if request.activity_type:
+        params["standard_type"] = request.activity_type
 
-    return await chembl_client.get("/activity.json", params=params)
+    result = chembl_client.get("/activity.json", params=params)
+
+    if "error" in result:
+        return f"Error retrieving bioactivities: {result['error']}"
+
+    activities = result.get("activities", [])
+    if not activities:
+        return f"No bioactivity data found for {request.chembl_id}"
+
+    # Group activities by target and summarize
+    target_activities = {}
+    for act in activities:
+        target_name = act.get("target_pref_name", "Unknown target")
+        target_id = act.get("target_chembl_id", "")
+
+        if target_name not in target_activities:
+            target_activities[target_name] = {"target_id": target_id, "activities": []}
+
+        # Extract key activity data
+        if act.get("standard_value") and act.get("standard_type"):
+            target_activities[target_name]["activities"].append(
+                {
+                    "type": act["standard_type"],
+                    "value": float(act["standard_value"]),
+                    "units": act.get("standard_units", ""),
+                    "relation": act.get("standard_relation", "="),
+                }
+            )
+
+    # Build summary
+    summary_parts = [f"Bioactivity summary for {request.chembl_id}:"]
+
+    count = 0
+    for target_name, data in sorted(
+        target_activities.items(), key=lambda x: len(x[1]["activities"]), reverse=True
+    ):
+        if count >= request.max_results:
+            break
+
+        target_id = data["target_id"]
+        activities = data["activities"]
+
+        # Get best activity for each type
+        activity_summary = []
+        for act_type in set(a["type"] for a in activities):
+            type_activities = [a for a in activities if a["type"] == act_type]
+            best = min(type_activities, key=lambda x: x["value"])
+
+            # Format value with appropriate precision
+            if best["value"] < 0.1:
+                value_str = f"{best['value']:.2e}"
+            elif best["value"] < 1000:
+                value_str = f"{best['value']:.1f}"
+            else:
+                value_str = f"{best['value']:.0f}"
+
+            activity_summary.append(
+                f"{best['type']} {best['relation']} {value_str} {best['units']}"
+            )
+
+        summary_parts.append(
+            f"• {target_name} ({target_id}): " + ", ".join(activity_summary)
+        )
+        count += 1
+
+    if len(target_activities) > request.max_results:
+        summary_parts.append(
+            f"(Showing top {request.max_results} of {len(target_activities)} targets with activity data)"
+        )
+
+    return "\n".join(summary_parts)
 
 
-async def get_activity_info(
-    activity_id: Annotated[
-        int, Field(description="Numeric ChEMBL activity ID (e.g., 363803)")
-    ],
-) -> Dict[str, Any]:
-    """Return the full ChEMBL activity record for a specific activity."""
-    return await chembl_client.get(
-        "/activity.json",
-        params={"activity_id": activity_id},
+class DrugInfoRequest(BaseModel):
+    chembl_id: str = Field(description="ChEMBL ID of the compound (e.g., CHEMBL25)")
+
+
+def get_drug_info_summary(request: DrugInfoRequest) -> str:
+    """Get comprehensive drug information including approval status, indications, mechanism of action, and warnings."""
+
+    # Gather all relevant drug information
+    summaries = []
+
+    # 1. Basic drug info
+    drug_result = chembl_client.get(
+        "/drug.json", params={"molecule_chembl_id": request.chembl_id, "limit": 1}
     )
 
+    if "error" not in drug_result and drug_result.get("drugs"):
+        drug = drug_result["drugs"][0]
+        if drug.get("first_approval"):
+            summaries.append(
+                f"{request.chembl_id} is an approved drug (first approved: {drug['first_approval']})"
+            )
 
-async def get_assay_info(
-    assay_id: Annotated[str, Field(description="ChEMBL assay ID (e.g., CHEMBL761638)")],
-) -> Dict[str, Any]:
-    """Return ChEMBL assay metadata for a specific assay."""
-    return await chembl_client.get(
-        "/assay.json",
-        params={"assay_chembl_id": assay_id},
+    # 2. Mechanism of action
+    moa_result = chembl_client.get(
+        "/mechanism.json", params={"molecule_chembl_id": request.chembl_id, "limit": 5}
     )
 
+    if "error" not in moa_result and moa_result.get("mechanisms"):
+        moa_parts = ["Mechanism of action:"]
+        for mech in moa_result["mechanisms"][:3]:  # Top 3 mechanisms
+            target_name = mech.get("target_name", "Unknown target")
+            action_type = mech.get("action_type", "Unknown action")
+            moa_parts.append(f"• {action_type} of {target_name}")
+        summaries.append(" ".join(moa_parts))
 
-async def get_mechanisms_of_action(
-    chembl_id: Annotated[
-        str, Field(description="ChEMBL ID of the compound (e.g., CHEMBL25)")
-    ],
-    max_results: Annotated[
-        int,
-        Field(
-            default=10,
-            ge=1,
-            le=1000,
-            description="Maximum number of results to return (1–1000)",
-        ),
-    ] = 10,
-) -> Dict[str, Any]:
-    """Return ChEMBL's curated mechanism of action data for a given compound."""
-    return await chembl_client.get(
-        "/mechanism.json",
-        params={
-            "molecule_chembl_id": chembl_id,
-            "limit": max_results,
-        },
-    )
-
-
-async def get_molecule_info(
-    chembl_id: Annotated[
-        str, Field(description="ChEMBL ID of the compound (e.g., CHEMBL25)")
-    ],
-    max_results: Annotated[
-        int,
-        Field(
-            default=10,
-            ge=1,
-            le=1000,
-            description="Maximum number of results to return (1–1000)",
-        ),
-    ] = 10,
-) -> Dict[str, Any]:
-    """Return ChEMBL's curated properties and metadata for a given compound, including calculated drug properties."""
-    return await chembl_client.get(
-        "/molecule.json",
-        params={
-            "molecule_chembl_id": chembl_id,
-            "limit": max_results,
-        },
-    )
-
-
-async def get_drug_info(
-    chembl_id: Annotated[
-        str, Field(description="ChEMBL ID of the compound (e.g., CHEMBL25)")
-    ],
-    max_results: Annotated[
-        int,
-        Field(
-            default=10,
-            ge=1,
-            le=1000,
-            description="Maximum number of results to return (1–1000)",
-        ),
-    ] = 10,
-) -> Dict[str, Any]:
-    """Return drug info for a given compound, including drug name, type, and status."""
-    return await chembl_client.get(
-        "/drug.json",
-        params={
-            "molecule_chembl_id": chembl_id,
-            "limit": max_results,
-        },
-    )
-
-
-async def get_drug_indications(
-    chembl_id: Annotated[
-        str, Field(description="ChEMBL ID of the compound (e.g., CHEMBL25)")
-    ],
-    max_results: Annotated[
-        int,
-        Field(
-            default=10,
-            ge=1,
-            le=1000,
-            description="Maximum number of results to return (1–1000)",
-        ),
-    ] = 10,
-) -> Dict[str, Any]:
-    """Return drug indications for a given compound, including disease and max phase."""
-    return await chembl_client.get(
+    # 3. Drug indications
+    indication_result = chembl_client.get(
         "/drug_indication.json",
-        params={
-            "molecule_chembl_id": chembl_id,
-            "limit": max_results,
-        },
+        params={"molecule_chembl_id": request.chembl_id, "limit": 10},
     )
 
+    if "error" not in indication_result and indication_result.get("drug_indications"):
+        indication_parts = ["Approved/investigated for:"]
+        indications_by_phase = {}
 
-async def get_drug_warning(
-    chembl_id: Annotated[
-        str, Field(description="ChEMBL ID of the compound (e.g., CHEMBL25)")
-    ],
-    max_results: Annotated[
-        int,
-        Field(
-            default=10,
-            ge=1,
-            le=1000,
-            description="Maximum number of results to return (1–1000)",
-        ),
-    ] = 10,
-) -> Dict[str, Any]:
-    """Return drug warnings for a given compound."""
-    return await chembl_client.get(
+        for ind in indication_result["drug_indications"]:
+            phase = ind.get("max_phase_for_ind", 0)
+            indication = ind.get("indication", "Unknown")
+
+            if phase not in indications_by_phase:
+                indications_by_phase[phase] = []
+            indications_by_phase[phase].append(indication)
+
+        # Show highest phase indications first
+        for phase in sorted(indications_by_phase.keys(), reverse=True):
+            try:
+                phase_int = int(phase) if phase else 0
+                phase_name = f"Phase {phase_int}" if phase_int > 0 else "Preclinical"
+            except (ValueError, TypeError):
+                phase_name = f"Phase {phase}" if phase else "Unknown"
+            for indication in indications_by_phase[phase][:3]:  # Top 3 per phase
+                indication_parts.append(f"• {indication} ({phase_name})")
+
+        summaries.append(" ".join(indication_parts))
+
+    # 4. Drug warnings
+    warning_result = chembl_client.get(
         "/drug_warning.json",
-        params={
-            "molecule_chembl_id": chembl_id,
-            "limit": max_results,
-        },
+        params={"molecule_chembl_id": request.chembl_id, "limit": 5},
+    )
+
+    if "error" not in warning_result and warning_result.get("drug_warnings"):
+        warning_parts = ["Safety warnings:"]
+        for warn in warning_result["drug_warnings"]:
+            warning_parts.append(f"• {warn.get('warning_type', 'Unknown warning')}")
+            if warn.get("warning_description"):
+                warning_parts.append(
+                    f"  Details: {warn['warning_description'][:100]}..."
+                )
+        summaries.append(" ".join(warning_parts))
+
+    if not summaries:
+        return f"No drug information found for {request.chembl_id} - this may not be an approved drug or drug candidate"
+
+    return "\n\n".join(summaries)
+
+
+# ============================ Target Tools =============================
+
+
+class TargetSearchRequest(BaseModel):
+    query: str = Field(
+        description="Target name, gene symbol, or UniProt accession to search for"
+    )
+    limit: int = Field(
+        default=5, ge=1, le=10, description="Number of results to return (1-10)"
     )
 
 
-# ==================== Target Search & Information ====================
-
-
-async def search_targets(
-    query: Annotated[
-        str,
-        Field(description="Search query (target name, gene symbol, or ChEMBL ID)"),
-    ],
-    limit: Annotated[
-        int,
-        Field(
-            default=10,
-            ge=1,
-            le=1000,
-            description="Number of results to return (1–1000)",
-        ),
-    ] = 10,
-) -> Dict[str, Any]:
-    """Search ChEMBL database for biological targets by name, gene symbol, or identifier"""
+def search_target_id(request: TargetSearchRequest) -> str:
+    """Search for ChEMBL target IDs by name, gene symbol, or UniProt accession. Returns only the target IDs for efficient lookup."""
     params = {
-        "q": query,
-        "limit": limit,
+        "q": request.query,
+        "limit": request.limit,
     }
-    return await chembl_client.get("/target/search.json", params=params)
+    result = chembl_client.get("/target/search.json", params=params)
+
+    if "error" in result:
+        return f"Error searching for target: {result['error']}"
+
+    targets = result.get("targets", [])
+    if not targets:
+        return f"No targets found matching '{request.query}'"
+
+    # Extract target IDs and names
+    target_list = []
+    for target in targets[: request.limit]:
+        target_id = target.get("target_chembl_id", "Unknown")
+        pref_name = target.get("pref_name", "No name")
+        organism = target.get("organism", "")
+
+        target_str = f"{target_id} ({pref_name}"
+        if organism:
+            target_str += f", {organism}"
+        target_str += ")"
+
+        target_list.append(target_str)
+
+    return (
+        f"Found {len(target_list)} target(s) matching '{request.query}': "
+        + ", ".join(target_list)
+    )
 
 
-async def get_target_information(
-    target_chembl_id: Annotated[
-        str, Field(description="ChEMBL Target ID (e.g., CHEMBL204)")
-    ],
-    max_results: Annotated[
-        int,
-        Field(
-            default=10,
-            ge=1,
-            le=1000,
-            description="Maximum number of results to return (1–1000)",
-        ),
-    ] = 10,
-) -> Dict[str, Any]:
-    """Return biological details for a ChEMBL target (e.g., UniProt ID, GO terms)."""
-    return await chembl_client.get(
+class TargetActivitiesRequest(BaseModel):
+    target_chembl_id: str = Field(
+        description="ChEMBL ID of the target (e.g., CHEMBL204)"
+    )
+    activity_type: Optional[str] = Field(
+        default="IC50", description="Activity type to focus on (e.g., IC50, Ki)"
+    )
+    max_compounds: int = Field(
+        default=5, description="Maximum number of active compounds to report"
+    )
+
+
+def get_target_activities_summary(request: TargetActivitiesRequest) -> str:
+    """Get a summary of the most potent compounds against a target, useful for understanding chemical matter and SAR."""
+    params = {
+        "target_chembl_id": request.target_chembl_id,
+        "limit": 100,  # Get more to find best compounds
+    }
+    if request.activity_type:
+        params["standard_type"] = request.activity_type
+
+    result = chembl_client.get("/activity.json", params=params)
+
+    if "error" in result:
+        return f"Error retrieving target activities: {result['error']}"
+
+    activities = result.get("activities", [])
+    if not activities:
+        filter_text = (
+            f" with {request.activity_type} data" if request.activity_type else ""
+        )
+        return f"No compounds found{filter_text} for target {request.target_chembl_id}"
+
+    # Get target name
+    target_result = chembl_client.get(
         "/target.json",
-        params={
-            "target_chembl_id": target_chembl_id,
-            "limit": max_results,
-        },
+        params={"target_chembl_id": request.target_chembl_id, "limit": 1},
     )
 
+    target_name = "Unknown target"
+    if "error" not in target_result and target_result.get("targets"):
+        target_name = target_result["targets"][0].get("pref_name", target_name)
 
-async def get_active_compounds(
-    target_chembl_id: Annotated[
-        str, Field(description="ChEMBL ID of the target (e.g., CHEMBL204)")
-    ],
-    max_results: Annotated[
-        Optional[int],
-        Field(default=10, description="Maximum number of results to return (1–1000)"),
-    ] = 10,
-    activity_type: Annotated[
-        Optional[str],
-        Field(default=None, description="Activity type to filter by (e.g., IC50, Ki)"),
-    ] = None,
-    max_activity_value: Annotated[
-        Optional[float],
-        Field(default=None, description="Maximum allowed activity value in nM"),
-    ] = None,
-) -> Dict[str, Any]:
-    """Retrieve active compounds against a specific ChEMBL target with a potency filter."""
-    params = {
-        "target_chembl_id": target_chembl_id,
-        "limit": max_results,
-    }
-    if activity_type is not None:
-        params["standard_type"] = activity_type
-    if max_activity_value is not None:
-        params["standard_value__lt"] = max_activity_value
+    # Group by compound and find best activity
+    compound_activities = {}
+    for act in activities:
+        if not act.get("standard_value") or not act.get("molecule_chembl_id"):
+            continue
 
-    return await chembl_client.get("/activity.json", params=params)
+        mol_id = act["molecule_chembl_id"]
+        mol_name = act.get("molecule_pref_name", mol_id)
+
+        if mol_id not in compound_activities:
+            compound_activities[mol_id] = {
+                "name": mol_name,
+                "best_value": float("inf"),
+                "best_type": "",
+                "units": "",
+            }
+
+        value = float(act["standard_value"])
+        if value < compound_activities[mol_id]["best_value"]:
+            compound_activities[mol_id]["best_value"] = value
+            compound_activities[mol_id]["best_type"] = act.get("standard_type", "")
+            compound_activities[mol_id]["units"] = act.get("standard_units", "")
+
+    # Sort by potency and create summary
+    sorted_compounds = sorted(
+        compound_activities.items(), key=lambda x: x[1]["best_value"]
+    )[: request.max_compounds]
+
+    if not sorted_compounds:
+        return f"No valid activity data found for {target_name} ({request.target_chembl_id})"
+
+    summary_parts = [
+        f"Most potent compounds against {target_name} ({request.target_chembl_id}):"
+    ]
+
+    for mol_id, data in sorted_compounds:
+        # Format value appropriately
+        value = data["best_value"]
+        if value < 0.1:
+            value_str = f"{value:.2e}"
+        elif value < 1000:
+            value_str = f"{value:.1f}"
+        else:
+            value_str = f"{value:.0f}"
+
+        compound_name = data["name"] if data["name"] != mol_id else ""
+        name_part = f" ({compound_name})" if compound_name else ""
+
+        summary_parts.append(
+            f"• {mol_id}{name_part}: {data['best_type']} = {value_str} {data['units']}"
+        )
+
+    total_compounds = len(compound_activities)
+    if total_compounds > request.max_compounds:
+        summary_parts.append(
+            f"(Showing top {request.max_compounds} of {total_compounds} compounds with activity data)"
+        )
+
+    return "\n".join(summary_parts)
 
 
 # ============================ Function List ============================
 
 CHEMBL_TOOLS = [
-    search_compounds,
-    get_compound_bioactivities,
-    get_activity_info,
-    get_assay_info,
-    get_mechanisms_of_action,
-    get_molecule_info,
-    get_drug_info,
-    get_drug_indications,
-    get_drug_warning,
-    search_targets,
-    get_target_information,
-    get_active_compounds,
+    search_chembl_id,
+    get_compound_properties,
+    get_compound_bioactivities_summary,
+    get_drug_info_summary,
+    search_target_id,
+    get_target_activities_summary,
 ]
