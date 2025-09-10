@@ -115,25 +115,14 @@ def search_pubmed_abstracts(request: SearchPubmedAbstractsRequest) -> str:
     Returns a readable summary including title, authors, journal, PMID, and abstract excerpt
     for each article found.
     """
-    # Create cache key from parameters
-    params_dict = {
-        "term": request.term,
-        "retmax": request.retmax,
-        "sort": request.sort,
-        "field": request.field,
-        "datetype": request.datetype,
-        "reldate": request.reldate,
-        "mindate": request.mindate,
-        "maxdate": request.maxdate,
-    }
 
     # If not in cache, make the API call
-    result = _fetch_pubmed_data(params_dict)
+    result = _fetch_pubmed_data(request)
 
     return _format_pubmed_abstracts(result, request.term)
 
 
-def _fetch_pubmed_data(params: dict) -> str:
+def _fetch_pubmed_data(request: SearchPubmedAbstractsRequest) -> str:
     """Internal function to fetch PubMed data without caching logic."""
 
     # Apply rate limiting BEFORE starting any API work
@@ -142,8 +131,7 @@ def _fetch_pubmed_data(params: dict) -> str:
     async def _async_fetch():
         async with pubmedclient_client() as client:
             # Build search request
-            search_params = {k: v for k, v in params.items() if v is not None}
-            search_params["db"] = Db.PUBMED
+            search_params = request.model_dump()
 
             # Add API key if available
             try:
@@ -153,7 +141,7 @@ def _fetch_pubmed_data(params: dict) -> str:
                     f"NCBI_API_KEY isn't set! Current value is {os.environ.get('NCBI_API_KEY')}"
                 )
 
-            search_request = ESearchRequest(**search_params)
+            search_request = ESearchRequest(db=Db.PUBMED, **search_params)
             search_response = await esearch(client, search_request)
             ids = search_response.esearchresult.idlist
 
@@ -260,3 +248,6 @@ def _format_pubmed_abstracts(raw_text: str, query: str) -> str:
         summary_parts.extend(article_parts)
 
     return "\n".join(summary_parts)
+
+
+SEARCH_TOOLS = [search_web, search_pubmed_abstracts]
