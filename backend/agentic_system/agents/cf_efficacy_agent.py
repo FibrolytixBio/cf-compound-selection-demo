@@ -21,8 +21,8 @@ class EfficacyAssessment(dspy.Signature):
     )
     predicted_efficacy: float = dspy.OutputField(
         desc="""
-        Esimate the compound efficacy (0-1) for reversing cardiac fibrosis in a screening assay.
-        In this screen a 10 uM solution of the compound is suspending in DMSO and applied to a well with primary human ventricular fibroblasts.
+        Estimate the compound efficacy (0-1) for reversing cardiac fibrosis in a screening assay.
+        In this screen a 10 uM solution of the compound is suspended in DMSO and applied to a well with primary human ventricular fibroblasts.
         A score of 0 indicates no efficacy (no fibroblasts reversed), while a score of 1 indicates complete efficacy (all fibroblasts reversed).
         """
     )

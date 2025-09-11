@@ -41,7 +41,6 @@ def search_web(query: str, max_results: int = 5) -> str:
         include_images=False,
     )
 
-    answer = response.get("answer", "")
     results = response.get("results", [])
 
     if not results:
@@ -50,7 +49,9 @@ def search_web(query: str, max_results: int = 5) -> str:
     # Build natural language summary
     summary_parts = [f"Web search results for '{query}':"]
 
-    summary_parts.append(f"\nAI-generated overview: {answer}\n")
+    # The agent seems to rely on this overview too much
+    # answer = response.get("answer", "")
+    # summary_parts.append(f"\nAI-generated overview: {answer}\n")
 
     for i, result in enumerate(results[:max_results], 1):
         title = result.get("title", "No title")
