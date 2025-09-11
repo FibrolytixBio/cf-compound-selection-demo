@@ -12,10 +12,14 @@ from pydantic import BaseModel, Field
 from pubmedclient.models import Db, EFetchRequest, ESearchRequest
 from pubmedclient.sdk import efetch, esearch, pubmedclient_client
 
-from .tool_utils import FileBasedRateLimiter
+from agentic_system.tools.tool_utils import FileBasedRateLimiter
 
 
 # ============================= Web Search =============================
+
+# Initialize Tavily client
+api_key = os.environ.get("TAVILY_API_KEY")
+tavily_client = TavilyClient(api_key=api_key)
 
 
 class WebSearchRequest(BaseModel):
@@ -30,23 +34,21 @@ class WebSearchRequest(BaseModel):
     )
 
 
+class WebExtractRequest(BaseModel):
+    urls: list[str] = Field(description="List of URLs to extract content from.")
+
+
 def search_web(request: WebSearchRequest) -> str:
-    """Search the web and return a natural language summary of the most relevant results."""
-    api_key = os.environ.get("TAVILY_API_KEY")
-
-    if not api_key:
-        return "Error: TAVILY_API_KEY environment variable not set"
-
-    tavily_client = TavilyClient(api_key=api_key)
     response = tavily_client.search(
         request.query,
         max_results=request.max_results,
         search_depth="basic",
-        include_answer=False,
+        include_answer=True,
         include_raw_content=False,
         include_images=False,
     )
 
+    answer = response.get("answer", "")
     results = response.get("results", [])
 
     if not results:
@@ -55,23 +57,38 @@ def search_web(request: WebSearchRequest) -> str:
     # Build natural language summary
     summary_parts = [f"Web search results for '{request.query}':"]
 
+    summary_parts.append(f"\nAI-generated overview: {answer}\n")
+
     for i, result in enumerate(results[: request.max_results], 1):
         title = result.get("title", "No title")
-        snippet = result.get("content", "No content available")
-        url = result.get("url", "")
+        content = result.get("content", "No content available")
+        url = result.get("url", "No URL available")
+        score = result.get("score", "No score available")
 
-        # Clean up snippet - remove excessive whitespace
-        snippet = " ".join(snippet.split())
-        if len(snippet) > 200:
-            snippet = snippet[:197] + "..."
+        summary_parts.append(f"\n{i}. {title} | ")
+        summary_parts.append(f"URL: {url} | ")
+        summary_parts.append(f"Relevance Score: {score} | ")
+        summary_parts.append(f"Content: {content}\n")
 
-        # Format as natural language
-        summary_parts.append(f"\n{i}. {title}")
-        summary_parts.append(f"   {snippet}")
-        if url:
-            # Show domain for context
-            domain = url.split("/")[2] if len(url.split("/")) > 2 else url
-            summary_parts.append(f"   Source: {domain}")
+    return "\n".join(summary_parts)
+
+
+def extract_web(request: WebExtractRequest) -> str:
+    """Extract raw content from a list of URLs."""
+    response = tavily_client.extract(request.urls)
+
+    # Build natural language summary
+    summary_parts = [f"Extract web results for '{request.urls}':\n"]
+
+    results = response.get("results", [])
+    for i, result in enumerate(results, 1):
+        summary_parts.append(f"{i}. URL: {result.get('url', 'No URL')}")
+        summary_parts.append(f"Content: {result.get('raw_content', 'No raw content')}")
+
+    summary_parts.append("\nFailed Results:")
+    failed_results = response.get("failed_results", [])
+    for i, result in enumerate(failed_results, 1):
+        summary_parts.append(f"{i}. URL: {result.get('url', 'No URL')}")
 
     return "\n".join(summary_parts)
 
@@ -164,90 +181,51 @@ def _fetch_pubmed_data(request: SearchPubmedAbstractsRequest) -> str:
 
 
 def _format_pubmed_abstracts(raw_text: str, query: str) -> str:
-    """Format raw PubMed abstract text into a readable summary."""
-    if not raw_text or not raw_text.strip():
-        return f"No abstracts retrieved for '{query}'"
+    """Format raw PubMed abstract text into a readable summary, excluding author information and conflict of interest statements."""
 
-    # Split into individual articles
-    articles = raw_text.strip().split("\n\n\n")
+    text_blocks = raw_text.split("\n\n")
 
-    summary_parts = [f"PubMed search results for '{query}' ({len(articles)} articles):"]
+    for text_block in text_blocks:
+        if text_block.startswith("Author information"):
+            text_blocks.remove(text_block)
+        if text_block.startswith("Conflict of interest statement:"):
+            text_blocks.remove(text_block)
+        if text_block.startswith("Copyright"):
+            text_blocks.remove(text_block)
 
-    for i, article_text in enumerate(articles, 1):
-        lines = article_text.strip().split("\n")
-
-        # Extract key information
-        pmid = None
-        title = None
-        authors = None
-        journal = None
-        abstract_lines = []
-        in_abstract = False
-
-        for line in lines:
-            line = line.strip()
-
-            # PMID
-            if line.startswith("PMID:"):
-                pmid = line.replace("PMID:", "").strip()
-
-            # Title (usually follows a numbered line like "1. ")
-            elif i == 1 and line.startswith(f"{i}. "):
-                title = line[3:].strip()
-
-            # Authors (contains multiple names with commas)
-            elif (
-                not authors and line.count(",") > 2 and not line.startswith("Abstract")
-            ):
-                authors = line
-
-            # Journal info (contains year in parentheses)
-            elif (
-                not journal
-                and "(" in line
-                and ")" in line
-                and any(year in line for year in ["202", "201", "200"])
-            ):
-                journal = line
-
-            # Abstract
-            elif line.startswith("Abstract") or in_abstract:
-                if line.startswith("Abstract"):
-                    in_abstract = True
-                    continue
-                if in_abstract and line:
-                    abstract_lines.append(line)
-
-        # Build article summary
-        article_parts = [f"\n{i}. {title or 'Title not found'}"]
-
-        if authors:
-            # Show first 3 authors
-            author_list = authors.split(",")[:3]
-            author_str = ", ".join(author_list)
-            if len(authors.split(",")) > 3:
-                author_str += " et al."
-            article_parts.append(f"   Authors: {author_str}")
-
-        if journal:
-            article_parts.append(f"   Journal: {journal}")
-
-        if pmid:
-            article_parts.append(f"   PMID: {pmid}")
-
-        # Add abstract summary (first 150 words)
-        if abstract_lines:
-            abstract_text = " ".join(abstract_lines)
-            words = abstract_text.split()
-            if len(words) > 150:
-                abstract_summary = " ".join(words[:150]) + "..."
-            else:
-                abstract_summary = abstract_text
-            article_parts.append(f"   Abstract: {abstract_summary}")
-
-        summary_parts.extend(article_parts)
-
-    return "\n".join(summary_parts)
+    return "\n\n".join(text_blocks)
 
 
-SEARCH_TOOLS = [search_web, search_pubmed_abstracts]
+SEARCH_TOOLS = [search_web, extract_web, search_pubmed_abstracts]
+
+if __name__ == "__main__":
+    import dotenv
+
+    dotenv.load_dotenv("../../../.env")
+
+    # Test web search
+    web_request = WebSearchRequest(query="Cardiac fibrosis treatments", max_results=3)
+    web_summary = search_web(web_request)
+    print(web_summary)
+
+    # print("\n" + "=" * 80 + "\n")
+
+    # # Test extract web
+    # urls = [
+    #     "https://en.wikipedia.org/wiki/Cardiac_fibrosis",
+    #     "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7924040/",
+    # ]
+    # extract_request = WebExtractRequest(urls=urls)
+    # extracted = extract_web(extract_request)
+    # print(extracted)
+
+    # print("\n" + "=" * 80 + "\n")
+
+    # # # Test PubMed search
+    # pubmed_request = SearchPubmedAbstractsRequest(
+    #     term="Luminespib AND (cardiac fibrosis OR myocardial fibrosis)",
+    #     retmax=3,
+    #     sort="relevance",
+    # )
+    # pubmed_summary = search_pubmed_abstracts(pubmed_request)
+    # print(pubmed_summary)

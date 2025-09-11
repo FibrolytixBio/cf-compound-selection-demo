@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import dspy
 import mlflow
 
-from agentic_system.agents.compound_prioritization.cf_efficacy.cf_efficacy_agent_new import (
+from agentic_system.agents.compound_prioritization.cf_efficacy.cf_efficacy_agent import (
     CFEfficacyAgent,
 )
 
@@ -23,6 +23,6 @@ dspy.configure(
 
 COMPOUND = "Luminespib"
 
-agent = CFEfficacyAgent(max_iters=5)
+agent = CFEfficacyAgent(max_iters=12)
 result = agent(compound_name=COMPOUND)
 print(result)
