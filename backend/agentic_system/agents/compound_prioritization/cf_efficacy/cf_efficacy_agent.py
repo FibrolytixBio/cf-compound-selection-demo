@@ -1,21 +1,8 @@
-from pathlib import Path
-
 import dspy
 
-from ....tools.tool_utils import get_mcp_tools
-
-from ....tools.search_tools import search_web, search_pubmed_abstracts
-from ....tools.litl_tools import get_experimental_efficacy_reasoning
-
-TOOLS = [search_web, search_pubmed_abstracts]  # , get_experimental_efficacy_reasoning]
-
-from ....tools import chembl_mcp_server
-from ....tools import pubchem_mcp_server
-
-MCP_SERVER_PATHS = [
-    Path(chembl_mcp_server.__file__).resolve(),
-    Path(pubchem_mcp_server.__file__).resolve(),
-]
+from ....tools.chembl_tools import CHEMBL_TOOLS
+from ....tools.pubchem_tools import PUBCHEM_TOOLS
+from ....tools.search_tools import SEARCH_TOOLS
 
 
 class EfficacyAssessment(dspy.Signature):
@@ -47,11 +34,7 @@ class CFEfficacyAgent(dspy.Module):
     def __init__(self, max_iters=5):
         super().__init__()
 
-        tools = []
-        for mcp_server in MCP_SERVER_PATHS:
-            tools.extend(get_mcp_tools(mcp_server))
-        for tool in TOOLS:
-            tools.append(tool)
+        tools = SEARCH_TOOLS + CHEMBL_TOOLS + PUBCHEM_TOOLS
 
         self.agent = dspy.ReAct(
             EfficacyAssessment,
@@ -68,7 +51,7 @@ if __name__ == "__main__":
 
     dotenv.load_dotenv("../../../.env")
 
-    dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5))
+    dspy.configure(lm=dspy.LM("gemini/gemini-2.5-pro", temperature=0.5, cache=False))
 
     agent = CFEfficacyAgent()
     result = agent.forward(compound_name="Givinostat")

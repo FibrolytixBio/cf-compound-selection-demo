@@ -433,7 +433,7 @@ def search_target_id(query: str, limit: int = 5) -> str:
     )
 
 
-@tool_cache(cache_name)
+# @tool_cache(cache_name)
 def get_target_activities_summary(
     target_chembl_id: str, activity_type: str = "IC50", max_compounds: int = 5
 ) -> str:
@@ -449,7 +449,7 @@ def get_target_activities_summary(
     """
     params = {
         "target_chembl_id": target_chembl_id,
-        "limit": 100,  # Get more to find best compounds
+        "limit": 100,  # Get more to find the most potent
     }
     if activity_type:
         params["standard_type"] = activity_type
@@ -457,80 +457,77 @@ def get_target_activities_summary(
     result = chembl_client.get("/activity.json", params=params)
 
     if "error" in result:
-        return f"Error retrieving target activities: {result['error']}"
+        return f"Error retrieving activities: {result['error']}"
 
     activities = result.get("activities", [])
     if not activities:
-        filter_text = f" with {activity_type} data" if activity_type else ""
-        return f"No compounds found{filter_text} for target {target_chembl_id}"
+        return f"No {activity_type} activities found for {target_chembl_id}"
 
-    # Get target name
-    target_result = chembl_client.get(
-        "/target.json",
-        params={"target_chembl_id": target_chembl_id, "limit": 1},
-    )
-
-    target_name = "Unknown target"
-    if "error" not in target_result and target_result.get("targets"):
-        target_name = target_result["targets"][0].get("pref_name", target_name)
-
-    # Group by compound and find best activity
-    compound_activities = {}
+    # Filter and sort by potency (lower standard_value is better for IC50/Ki)
+    valid_activities = []
     for act in activities:
-        if not act.get("standard_value") or not act.get("molecule_chembl_id"):
-            continue
+        if act.get("standard_value") and act.get("standard_type") == activity_type:
+            try:
+                val = float(act["standard_value"])
+                valid_activities.append((val, act))
+            except (ValueError, TypeError):
+                continue
 
-        mol_id = act["molecule_chembl_id"]
-        mol_name = act.get("molecule_pref_name", mol_id)
+    if not valid_activities:
+        return f"No valid {activity_type} data found for {target_chembl_id}"
 
-        if mol_id not in compound_activities:
-            compound_activities[mol_id] = {
-                "name": mol_name,
-                "best_value": float("inf"),
-                "best_type": "",
-                "units": "",
-            }
+    # Sort by potency (ascending value)
+    valid_activities.sort(key=lambda x: x[0])
 
-        value = float(act["standard_value"])
-        if value < compound_activities[mol_id]["best_value"]:
-            compound_activities[mol_id]["best_value"] = value
-            compound_activities[mol_id]["best_type"] = act.get("standard_type", "")
-            compound_activities[mol_id]["units"] = act.get("standard_units", "")
+    # Take top max_compounds
+    top_activities = valid_activities[:max_compounds]
 
-    # Sort by potency and create summary
-    sorted_compounds = sorted(
-        compound_activities.items(), key=lambda x: x[1]["best_value"]
-    )[:max_compounds]
-
-    if not sorted_compounds:
-        return f"No valid activity data found for {target_name} ({target_chembl_id})"
+    # Get target name from first activity
+    target_name = top_activities[0][1].get("target_pref_name", target_chembl_id)
 
     summary_parts = [
-        f"Most potent compounds against {target_name} ({target_chembl_id}):"
+        f"Top {len(top_activities)} compounds with {activity_type} against {target_name} ({target_chembl_id}):"
     ]
 
-    for mol_id, data in sorted_compounds:
-        # Format value appropriately
-        value = data["best_value"]
-        if value < 0.1:
-            value_str = f"{value:.2e}"
-        elif value < 1000:
-            value_str = f"{value:.1f}"
+    for i, (val, act) in enumerate(top_activities, 1):
+        mol_id = act.get("molecule_chembl_id", "Unknown")
+        mol_name = act.get("molecule_pref_name", "No Preferred Name")
+        if mol_name is None:
+            mol_name = "No Preferred Name"
+        units = act.get("standard_units", "")
+        relation = act.get("standard_relation", "=")
+        pchembl = act.get("pchembl_value")
+        assay_desc = act.get("assay_description", "")
+
+        # Format value
+        if val < 0.1:
+            val_str = f"{val:.2e}"
+        elif val < 1000:
+            val_str = f"{val:.1f}"
         else:
-            value_str = f"{value:.0f}"
+            val_str = f"{val:.0f}"
 
-        compound_name = data["name"] if data["name"] != mol_id else ""
-        name_part = f" ({compound_name})" if compound_name else ""
+        compound_str = f"{mol_name} (CHEMBL ID: {mol_id})"
+        activity_str = f"{activity_type} {relation} {val_str} {units}"
+        if pchembl:
+            activity_str += f" (pChEMBL value: {pchembl})"
 
-        summary_parts.append(
-            f"• {mol_id}{name_part}: {data['best_type']} = {value_str} {data['units']}"
-        )
-
-    total_compounds = len(compound_activities)
-    if total_compounds > max_compounds:
-        summary_parts.append(
-            f"(Showing top {max_compounds} of {total_compounds} compounds with activity data)"
-        )
+        summary_parts.append(f"{i}. {compound_str}: {activity_str}")
+        if assay_desc:
+            assay_id = act.get("assay_chembl_id")
+            year = act.get("document_year")
+            organism = act.get("target_organism")
+            assay_info = f"Assay: {assay_desc}"
+            details = []
+            if assay_id:
+                details.append(f"ID: {assay_id}")
+            if year:
+                details.append(f"Year: {year}")
+            if organism:
+                details.append(f"Organism: {organism}")
+            if details:
+                assay_info += f" ({', '.join(details)})"
+            summary_parts.append(f"   {assay_info}")
 
     return "\n".join(summary_parts)
 
@@ -549,22 +546,12 @@ CHEMBL_TOOLS = [
 
 if __name__ == "__main__":
     import dotenv
-    import threading
 
     dotenv.load_dotenv("../../../.env")
 
-    def test_chembl():
-        result = search_chembl_id("aspirin")
-        print(f"Thread {threading.current_thread().name}: {result[:100]}...")
-
-    # Test with 10 threads
-    threads = []
-    for i in range(10):
-        t = threading.Thread(target=test_chembl, name=f"Thread-{i}")
-        threads.append(t)
-        t.start()
-
-    for t in threads:
-        t.join()
-
-    print("All threads completed")
+    # test get_target_activities_summary
+    print(
+        get_target_activities_summary(
+            "CHEMBL4303", activity_type="IC50", max_compounds=5
+        )
+    )
