@@ -24,7 +24,7 @@ def _initialize_if_needed():
     global _agent
 
     if _agent is None:
-        from agentic_system.agents.compound_prioritization.compound_prioritization_agent import (
+        from agentic_system.agents.compound_prioritization_agent import (
             CompoundPrioritizationAgent,
         )
 

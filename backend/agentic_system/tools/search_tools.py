@@ -127,7 +127,7 @@ def search_pubmed_abstracts(
     # If not in cache, make the API call
     result = _fetch_pubmed_data(term, retmax, sort, mindate, maxdate)
 
-    return _format_pubmed_abstracts(result, term)
+    return _format_pubmed_abstracts(result)
 
 
 @tool_cache(pubmed_cache_name)

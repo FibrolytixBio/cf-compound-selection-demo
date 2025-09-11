@@ -8,9 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # from drug_fibrosis_agent.coordinator import evaluate_drug
-from agentic_system.agents.compound_prioritization.compound_prioritization_agent import (
-    CompoundPrioritizationAgent,
-)
+from agentic_system.agents import CompoundPrioritizationAgent
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -42,12 +40,12 @@ class CompoundPrioritizationRequest(BaseModel):
     compound_name: str
 
 
-@app.post("/")
+@app.post("/prioritize_compound")
 def get_compound_prioritization(request: CompoundPrioritizationRequest):
-    dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash-preview-05-20", temperature=0.5))
+    dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", temperature=0.5, cache=False))
 
-    compoundPriortizationAgent = CompoundPrioritizationAgent()
-    result = compoundPriortizationAgent(
+    compoundPrioritizationAgent = CompoundPrioritizationAgent()
+    result = compoundPrioritizationAgent(
         compound_name=request.compound_name, hierarchical_result=True
     )
     logger.info(
