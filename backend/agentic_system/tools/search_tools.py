@@ -10,7 +10,7 @@ from tavily import TavilyClient
 from pubmedclient.models import Db, EFetchRequest, ESearchRequest
 from pubmedclient.sdk import efetch, esearch, pubmedclient_client
 
-from agentic_system.tools.tool_utils import FileBasedRateLimiter
+from agentic_system.tools.tool_utils import FileBasedRateLimiter, tool_cache
 
 
 # ============================= Web Search =============================
@@ -18,8 +18,10 @@ from agentic_system.tools.tool_utils import FileBasedRateLimiter
 # Initialize Tavily client
 api_key = os.environ.get("TAVILY_API_KEY")
 tavily_client = TavilyClient(api_key=api_key)
+tavily_cache_name = "tavily"
 
 
+@tool_cache(tavily_cache_name)
 def search_web(query: str, max_results: int = 5) -> str:
     """Search the web for information on a given query.
 
@@ -64,6 +66,7 @@ def search_web(query: str, max_results: int = 5) -> str:
     return "\n".join(summary_parts)
 
 
+@tool_cache(tavily_cache_name)
 def extract_web(urls: list[str]) -> str:
     """Extract raw content from a list of URLs.
 
@@ -97,8 +100,10 @@ def extract_web(urls: list[str]) -> str:
 pubmed_rate_limiter = FileBasedRateLimiter(
     max_requests=1, time_window=1.0, name="pubmed"
 )
+pubmed_cache_name = "pubmed"
 
 
+@tool_cache(pubmed_cache_name)
 def search_pubmed_abstracts(
     term: str,
     retmax: int = 5,
@@ -125,6 +130,7 @@ def search_pubmed_abstracts(
     return _format_pubmed_abstracts(result, term)
 
 
+@tool_cache(pubmed_cache_name)
 def _fetch_pubmed_data(
     term: str,
     retmax: int = 5,
@@ -178,7 +184,7 @@ def _fetch_pubmed_data(
     return asyncio.run(_async_fetch())
 
 
-def _format_pubmed_abstracts(raw_text: str, query: str) -> str:
+def _format_pubmed_abstracts(raw_text: str) -> str:
     """Format raw PubMed abstract text into a readable summary, excluding author information and conflict of interest statements."""
 
     text_blocks = raw_text.split("\n\n")

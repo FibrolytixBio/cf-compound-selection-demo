@@ -8,7 +8,8 @@ import time
 import urllib.parse
 
 import httpx
-from .tool_utils import FileBasedRateLimiter
+from agentic_system.tools.tool_utils import FileBasedRateLimiter
+from agentic_system.tools.tool_utils import tool_cache
 
 
 # PubChem API client configuration
@@ -68,11 +69,13 @@ class PubChemClient:
 
 # Initialize the PubChem client
 pubchem_client = PubChemClient()
+cache_name = "pubchem"
 
 
 # ==================== Compound Search & ID Tools ====================
 
 
+@tool_cache(cache_name)
 def search_pubchem_cid(query: str, limit: int = 5) -> str:
     """Search for PubChem CIDs by compound name, CAS number, or formula. Returns CIDs and key names.
 
@@ -107,6 +110,7 @@ def search_pubchem_cid(query: str, limit: int = 5) -> str:
     )
 
 
+@tool_cache(cache_name)
 def get_cid_properties(cid: Union[int, str]) -> str:
     """Get key physicochemical properties for a PubChem compound that are relevant for drug discovery.
 
@@ -234,6 +238,7 @@ def get_cid_properties(cid: Union[int, str]) -> str:
 # ==================== Bioassay & Activity Tools ====================
 
 
+@tool_cache(cache_name)
 def get_bioassay_summary(cid: Union[int, str], max_assays: int = 5) -> str:
     """Get a summary of bioassay results for a compound, focusing on the most relevant therapeutic activities.
 
@@ -302,6 +307,7 @@ def get_bioassay_summary(cid: Union[int, str], max_assays: int = 5) -> str:
 # ==================== Safety & Drug Information Tools ====================
 
 
+@tool_cache(cache_name)
 def get_safety_summary(cid: Union[int, str]) -> str:
     """Get safety information including GHS classification and hazard warnings for a compound.
 
@@ -380,6 +386,7 @@ def get_safety_summary(cid: Union[int, str]) -> str:
         return f"Error parsing safety data for CID {cid}: {str(e)}"
 
 
+@tool_cache(cache_name)
 def get_drug_summary(cid: Union[int, str]) -> str:
     """Get drug and medication information for a compound including therapeutic uses and pharmacology.
 
@@ -467,6 +474,7 @@ def get_drug_summary(cid: Union[int, str]) -> str:
 # ==================== Structure Similarity Tools ====================
 
 
+@tool_cache(cache_name)
 def _poll_for_results(
     list_key: str, max_wait_time: int = 30, poll_interval: int = 2
 ) -> Dict[str, Any]:
@@ -484,6 +492,7 @@ def _poll_for_results(
     return {"error": f"Search timed out after {max_wait_time} seconds"}
 
 
+@tool_cache(cache_name)
 def find_similar_compounds(
     cid: Union[int, str], threshold: int = 90, max_results: int = 5
 ) -> str:

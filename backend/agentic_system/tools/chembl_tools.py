@@ -5,7 +5,8 @@ ChEMBL Standalone Tools - Synchronous functions with natural language outputs
 
 from typing import Dict, Any
 import httpx
-from .tool_utils import FileBasedRateLimiter
+from agentic_system.tools.tool_utils import FileBasedRateLimiter
+from agentic_system.tools.tool_utils import tool_cache
 
 
 # ChEMBL API client configuration
@@ -46,10 +47,12 @@ class ChEMBLClient:
 
 # Initialize the ChEMBL client
 chembl_client = ChEMBLClient()
+cache_name = "chembl"
 
 # ============================ Compound Search Tools =============================
 
 
+@tool_cache(cache_name)
 def search_chembl_id(query: str, limit: int = 5) -> str:
     """Search for ChEMBL IDs by compound name, synonym, or identifier. Returns only the ChEMBL IDs for efficient lookup.
 
@@ -86,6 +89,7 @@ def search_chembl_id(query: str, limit: int = 5) -> str:
     )
 
 
+@tool_cache(cache_name)
 def get_compound_properties(chembl_id: str) -> str:
     """Get key physicochemical properties for a compound that are relevant for drug discovery.
 
@@ -185,6 +189,7 @@ def get_compound_properties(chembl_id: str) -> str:
     return ". ".join(summary_parts) + "."
 
 
+@tool_cache(cache_name)
 def get_compound_bioactivities_summary(
     chembl_id: str, activity_type: str = None, max_results: int = 5
 ) -> str:
@@ -278,6 +283,7 @@ def get_compound_bioactivities_summary(
     return "\n".join(summary_parts)
 
 
+@tool_cache(cache_name)
 def get_drug_info_summary(chembl_id: str) -> str:
     """Get comprehensive drug information including approval status, indications, mechanism of action, and warnings.
 
@@ -384,6 +390,7 @@ def get_drug_info_summary(chembl_id: str) -> str:
 # ============================ Target Tools =============================
 
 
+@tool_cache(cache_name)
 def search_target_id(query: str, limit: int = 5) -> str:
     """Search for ChEMBL target IDs by name, gene symbol, or UniProt accession. Returns only the target IDs for efficient lookup.
 
@@ -426,6 +433,7 @@ def search_target_id(query: str, limit: int = 5) -> str:
     )
 
 
+@tool_cache(cache_name)
 def get_target_activities_summary(
     target_chembl_id: str, activity_type: str = "IC50", max_compounds: int = 5
 ) -> str:
