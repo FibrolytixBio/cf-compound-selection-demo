@@ -1,3 +1,7 @@
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
+
 import dspy
 
 from ....tools.chembl_tools import CHEMBL_TOOLS

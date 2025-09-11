@@ -1,3 +1,7 @@
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
+
 import dspy
 
 from .cf_efficacy.cf_efficacy_agent import CFEfficacyAgent

@@ -433,7 +433,7 @@ def search_target_id(query: str, limit: int = 5) -> str:
     )
 
 
-# @tool_cache(cache_name)
+@tool_cache(cache_name)
 def get_target_activities_summary(
     target_chembl_id: str, activity_type: str = "IC50", max_compounds: int = 5
 ) -> str:
