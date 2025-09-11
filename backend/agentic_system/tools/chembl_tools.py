@@ -5,6 +5,7 @@ ChEMBL Standalone Tools - Synchronous functions with natural language outputs
 
 from typing import Dict, Any
 import httpx
+from .tool_utils import FileBasedRateLimiter
 
 
 # ChEMBL API client configuration
@@ -24,9 +25,13 @@ class ChEMBLClient:
                 "Accept": "application/json",
             },
         )
+        self.rate_limiter = FileBasedRateLimiter(
+            max_requests=2, time_window=1.0, name="chembl"
+        )
 
     def get(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Make GET request to ChEMBL API"""
+        self.rate_limiter.acquire_sync()
         try:
             response = self.client.get(endpoint, params=params)
             response.raise_for_status()
@@ -536,8 +541,22 @@ CHEMBL_TOOLS = [
 
 if __name__ == "__main__":
     import dotenv
+    import threading
 
     dotenv.load_dotenv("../../../.env")
 
-    # Example usage
-    print(get_drug_info_summary("CHEMBL252164"))
+    def test_chembl():
+        result = search_chembl_id("aspirin")
+        print(f"Thread {threading.current_thread().name}: {result[:100]}...")
+
+    # Test with 10 threads
+    threads = []
+    for i in range(10):
+        t = threading.Thread(target=test_chembl, name=f"Thread-{i}")
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    print("All threads completed")

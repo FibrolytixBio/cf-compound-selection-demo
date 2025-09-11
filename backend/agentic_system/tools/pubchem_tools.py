@@ -8,6 +8,7 @@ import time
 import urllib.parse
 
 import httpx
+from .tool_utils import FileBasedRateLimiter
 
 
 # PubChem API client configuration
@@ -27,9 +28,13 @@ class PubChemClient:
                 "Accept": "application/json",
             },
         )
+        self.rate_limiter = FileBasedRateLimiter(
+            max_requests=2, time_window=1.0, name="pubchem"
+        )
 
     def get(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Make GET request to PubChem API"""
+        self.rate_limiter.acquire_sync()
         try:
             response = self.client.get(endpoint, params=params)
             response.raise_for_status()
@@ -48,6 +53,7 @@ class PubChemClient:
         data: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """Make POST request to PubChem API"""
+        self.rate_limiter.acquire_sync()
         try:
             response = self.client.post(endpoint, params=params, data=data)
             response.raise_for_status()
@@ -565,3 +571,23 @@ PUBCHEM_TOOLS = [
     get_drug_summary,
     find_similar_compounds,
 ]
+
+
+if __name__ == "__main__":
+    import threading
+
+    def test_pubchem():
+        result = search_pubchem_cid("aspirin")
+        print(f"Thread {threading.current_thread().name}: {result[:100]}...")
+
+    # Test with 10 threads
+    threads = []
+    for i in range(10):
+        t = threading.Thread(target=test_pubchem, name=f"Thread-{i}")
+        threads.append(t)
+        t.start()
+
+    for t in threads:
+        t.join()
+
+    print("All threads completed")
