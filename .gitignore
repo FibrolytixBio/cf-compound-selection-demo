@@ -8,6 +8,11 @@
 backend/.env
 *.venv/
 backend/agentic_system/tools/litl_data.csv
+# MLflow files
+*/mlartifacts/
+*mydb.sqlite
+
+
 
 # Frontend build files
 frontend/.next/

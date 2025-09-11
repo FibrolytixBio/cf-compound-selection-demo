@@ -7,8 +7,10 @@ requires-python = ">=3.12"
 dependencies = [
     "pydantic",
     "mcp",
-    "dspy",
+    "dspy==3.0.3",
+    "openai==1.99.5", # pinned becaused of bug https://github.com/stanfordnlp/dspy/issues/8677
     "httpx",
+    "tavily-python",
     "jupyter",
     "ipykernel",
     "python-dotenv",

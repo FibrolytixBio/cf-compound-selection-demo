@@ -9,7 +9,7 @@ image = (
     .add_local_python_source("agentic_system")
 )
 
-app = modal.App("compound-prioritization", image=image)
+app = modal.App("cf-compound-selection-demo", image=image)
 
 # Container-level globals
 _agent = None
@@ -24,17 +24,19 @@ def _initialize_if_needed():
     global _agent
 
     if _agent is None:
-        from agentic_system.agents.compound_prioritization.compound_prioritization_agent import (
-            CompoundPrioritizationAgent,
-        )
+        from agentic_system.agents import CompoundPrioritizationAgent
 
-        dspy.configure(lm=dspy.LM("gemini/gemini-2.5-flash", temperature=0.5))
+        dspy.configure(
+            lm=dspy.LM(
+                "gemini/gemini-2.5-pro", temperature=0.5, max_output_tokens=25000
+            )
+        )
         _agent = CompoundPrioritizationAgent()
         print("Agent initialized successfully")
 
 
 @app.function(
-    secrets=[modal.Secret.from_name("test-secret")],
+    secrets=[modal.Secret.from_name("cf-compound-selection-demo")],
     scaledown_window=120,
     cpu=1,
     memory=512,
