@@ -3,12 +3,10 @@
 Search Tools - Refactored with focused outputs and natural language summaries
 """
 
-from typing import Optional
 import os
 import asyncio
 
 from tavily import TavilyClient
-from pydantic import BaseModel, Field
 from pubmedclient.models import Db, EFetchRequest, ESearchRequest
 from pubmedclient.sdk import efetch, esearch, pubmedclient_client
 
@@ -22,26 +20,19 @@ api_key = os.environ.get("TAVILY_API_KEY")
 tavily_client = TavilyClient(api_key=api_key)
 
 
-class WebSearchRequest(BaseModel):
-    query: str = Field(
-        description="The search string used to query the web, such as a topic, question, or keyword."
-    )
-    max_results: int = Field(
-        default=5,
-        ge=1,
-        le=10,
-        description="Maximum number of search results to return (1-10).",
-    )
+def search_web(query: str, max_results: int = 5) -> str:
+    """Search the web for information on a given query.
 
+    Args:
+        query (str): The search string used to query the web, such as a topic, question, or keyword.
+        max_results (int, optional): Maximum number of search results to return (1-10). Defaults to 5.
 
-class WebExtractRequest(BaseModel):
-    urls: list[str] = Field(description="List of URLs to extract content from.")
-
-
-def search_web(request: WebSearchRequest) -> str:
+    Returns:
+        str: Natural language summary of search results including AI-generated overview and detailed results.
+    """
     response = tavily_client.search(
-        request.query,
-        max_results=request.max_results,
+        query,
+        max_results=max_results,
         search_depth="basic",
         include_answer=True,
         include_raw_content=False,
@@ -52,14 +43,14 @@ def search_web(request: WebSearchRequest) -> str:
     results = response.get("results", [])
 
     if not results:
-        return f"No web search results found for '{request.query}'"
+        return f"No web search results found for '{query}'"
 
     # Build natural language summary
-    summary_parts = [f"Web search results for '{request.query}':"]
+    summary_parts = [f"Web search results for '{query}':"]
 
     summary_parts.append(f"\nAI-generated overview: {answer}\n")
 
-    for i, result in enumerate(results[: request.max_results], 1):
+    for i, result in enumerate(results[:max_results], 1):
         title = result.get("title", "No title")
         content = result.get("content", "No content available")
         url = result.get("url", "No URL available")
@@ -73,12 +64,19 @@ def search_web(request: WebSearchRequest) -> str:
     return "\n".join(summary_parts)
 
 
-def extract_web(request: WebExtractRequest) -> str:
-    """Extract raw content from a list of URLs."""
-    response = tavily_client.extract(request.urls)
+def extract_web(urls: list[str]) -> str:
+    """Extract raw content from a list of URLs.
+
+    Args:
+        urls (list[str]): List of URLs to extract content from.
+
+    Returns:
+        str: Natural language summary of extracted content from each URL.
+    """
+    response = tavily_client.extract(urls)
 
     # Build natural language summary
-    summary_parts = [f"Extract web results for '{request.urls}':\n"]
+    summary_parts = [f"Extract web results for '{urls}':\n"]
 
     results = response.get("results", [])
     for i, result in enumerate(results, 1):
@@ -101,45 +99,39 @@ pubmed_rate_limiter = FileBasedRateLimiter(
 )
 
 
-class SearchPubmedAbstractsRequest(BaseModel):
-    term: str = Field(
-        ...,
-        description="""Search query for PubMed. Can include field tags like [MeSH Terms], 
-        [Title/Abstract], [Author], etc. Boolean operators (AND, OR, NOT) are supported.""",
-    )
-    retmax: Optional[int] = Field(
-        5,
-        description="""Number of articles to return (default=5, max=10).""",
-    )
-    sort: Optional[str] = Field(
-        "relevance",
-        description="""Sort method: relevance (default), pub_date (newest first), 
-        Author, or JournalName.""",
-    )
-    mindate: Optional[str] = Field(
-        None,
-        description="""Start date for publication date filter (YYYY/MM/DD or YYYY).""",
-    )
-    maxdate: Optional[str] = Field(
-        None,
-        description="""End date for publication date filter (YYYY/MM/DD or YYYY).""",
-    )
-
-
-def search_pubmed_abstracts(request: SearchPubmedAbstractsRequest) -> str:
+def search_pubmed_abstracts(
+    term: str,
+    retmax: int = 5,
+    sort: str = "relevance",
+    mindate: str = None,
+    maxdate: str = None,
+) -> str:
     """Search PubMed for scientific articles and return formatted abstracts with key metadata.
 
-    Returns a readable summary including title, authors, journal, PMID, and abstract excerpt
-    for each article found.
+    Args:
+        term (str): Search query for PubMed. Can include field tags like [MeSH Terms], [Title/Abstract], [Author], etc. Boolean operators (AND, OR, NOT) are supported.
+        retmax (int, optional): Number of articles to return (default=5, max=10). Defaults to 5.
+        sort (str, optional): Sort method: relevance (default), pub_date (newest first), Author, or JournalName. Defaults to "relevance".
+        mindate (str, optional): Start date for publication date filter (YYYY/MM/DD or YYYY). Defaults to None.
+        maxdate (str, optional): End date for publication date filter (YYYY/MM/DD or YYYY). Defaults to None.
+
+    Returns:
+        str: Readable summary including title, authors, journal, PMID, and abstract excerpt for each article found.
     """
 
     # If not in cache, make the API call
-    result = _fetch_pubmed_data(request)
+    result = _fetch_pubmed_data(term, retmax, sort, mindate, maxdate)
 
-    return _format_pubmed_abstracts(result, request.term)
+    return _format_pubmed_abstracts(result, term)
 
 
-def _fetch_pubmed_data(request: SearchPubmedAbstractsRequest) -> str:
+def _fetch_pubmed_data(
+    term: str,
+    retmax: int = 5,
+    sort: str = "relevance",
+    mindate: str = None,
+    maxdate: str = None,
+) -> str:
     """Internal function to fetch PubMed data without caching logic."""
 
     # Apply rate limiting BEFORE starting any API work
@@ -148,7 +140,13 @@ def _fetch_pubmed_data(request: SearchPubmedAbstractsRequest) -> str:
     async def _async_fetch():
         async with pubmedclient_client() as client:
             # Build search request
-            search_params = request.model_dump()
+            search_params = {
+                "term": term,
+                "retmax": retmax,
+                "sort": sort,
+                "mindate": mindate,
+                "maxdate": maxdate,
+            }
 
             # Add API key if available
             try:
@@ -204,8 +202,7 @@ if __name__ == "__main__":
     dotenv.load_dotenv("../../../.env")
 
     # Test web search
-    web_request = WebSearchRequest(query="Cardiac fibrosis treatments", max_results=3)
-    web_summary = search_web(web_request)
+    web_summary = search_web(query="Cardiac fibrosis treatments", max_results=3)
     print(web_summary)
 
     # print("\n" + "=" * 80 + "\n")
@@ -215,17 +212,15 @@ if __name__ == "__main__":
     #     "https://en.wikipedia.org/wiki/Cardiac_fibrosis",
     #     "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7924040/",
     # ]
-    # extract_request = WebExtractRequest(urls=urls)
-    # extracted = extract_web(extract_request)
+    # extracted = extract_web(urls=urls)
     # print(extracted)
 
     # print("\n" + "=" * 80 + "\n")
 
     # # # Test PubMed search
-    # pubmed_request = SearchPubmedAbstractsRequest(
+    # pubmed_summary = search_pubmed_abstracts(
     #     term="Luminespib AND (cardiac fibrosis OR myocardial fibrosis)",
     #     retmax=3,
     #     sort="relevance",
     # )
-    # pubmed_summary = search_pubmed_abstracts(pubmed_request)
     # print(pubmed_summary)

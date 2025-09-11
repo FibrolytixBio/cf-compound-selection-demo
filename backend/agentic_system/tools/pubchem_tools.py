@@ -3,12 +3,11 @@
 PubChem Standalone Tools - Synchronous functions with natural language outputs
 """
 
-from typing import Optional, Dict, Any, Union, List
+from typing import Dict, Any, Union, List
 import time
 import urllib.parse
 
 import httpx
-from pydantic import BaseModel, Field
 
 
 # PubChem API client configuration
@@ -29,9 +28,7 @@ class PubChemClient:
             },
         )
 
-    def get(
-        self, endpoint: str, params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    def get(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Make GET request to PubChem API"""
         try:
             response = self.client.get(endpoint, params=params)
@@ -47,8 +44,8 @@ class PubChemClient:
     def post(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
+        params: Dict[str, Any] = None,
+        data: Dict[str, Any] = None,
     ) -> Dict[str, Any]:
         """Make POST request to PubChem API"""
         try:
@@ -70,26 +67,25 @@ pubchem_client = PubChemClient()
 # ==================== Compound Search & ID Tools ====================
 
 
-class SearchCompoundsRequest(BaseModel):
-    query: str = Field(
-        description="Compound name, CAS number, or molecular formula to search for"
-    )
-    limit: int = Field(
-        default=5, ge=1, le=10, description="Number of results to return (1-10)"
-    )
+def search_pubchem_cid(query: str, limit: int = 5) -> str:
+    """Search for PubChem CIDs by compound name, CAS number, or formula. Returns CIDs and key names.
 
+    Args:
+        query (str): Compound name, CAS number, or molecular formula to search for
+        limit (int, optional): Number of results to return (1-10). Defaults to 5.
 
-def search_pubchem_cid(request: SearchCompoundsRequest) -> str:
-    """Search for PubChem CIDs by compound name, CAS number, or formula. Returns CIDs and key names."""
-    endpoint = f"/compound/name/{urllib.parse.quote(request.query)}/cids/JSON"
-    result = pubchem_client.get(endpoint, params={"MaxRecords": request.limit})
+    Returns:
+        str: Natural language summary of search results
+    """
+    endpoint = f"/compound/name/{urllib.parse.quote(query)}/cids/JSON"
+    result = pubchem_client.get(endpoint, params={"MaxRecords": limit})
 
     if "error" in result:
         return f"Error searching for compound: {result['error']}"
 
     cids: List[int] = result.get("IdentifierList", {}).get("CID", [])
     if not cids:
-        return f"No compounds found matching '{request.query}'"
+        return f"No compounds found matching '{query}'"
 
     # If single CID, enrich with IUPAC name; if many, just list CIDs
     if len(cids) == 1:
@@ -97,20 +93,23 @@ def search_pubchem_cid(request: SearchCompoundsRequest) -> str:
         props_result = pubchem_client.get(props_endpoint)
         if "error" not in props_result and props_result.get("PropertyTable"):
             name = props_result["PropertyTable"]["Properties"][0].get("IUPACName", "")
-            return f"Found PubChem CID {cids[0]} ({name}) for '{request.query}'"
+            return f"Found PubChem CID {cids[0]} ({name}) for '{query}'"
 
     return (
-        f"Found {min(len(cids), request.limit)} compound(s) matching '{request.query}': CIDs "
-        + "\n - ".join(map(str, cids[: request.limit]))
+        f"Found {min(len(cids), limit)} compound(s) matching '{query}': CIDs "
+        + "\n - ".join(map(str, cids[:limit]))
     )
 
 
-class CIDPropertiesRequest(BaseModel):
-    cid: Union[int, str] = Field(description="PubChem Compound ID (CID)")
+def get_cid_properties(cid: Union[int, str]) -> str:
+    """Get key physicochemical properties for a PubChem compound that are relevant for drug discovery.
 
+    Args:
+        cid (Union[int, str]): PubChem Compound ID (CID)
 
-def get_cid_properties(request: CIDPropertiesRequest) -> str:
-    """Get key physicochemical properties for a PubChem compound that are relevant for drug discovery."""
+    Returns:
+        str: Natural language summary of compound properties
+    """
     properties = [
         "MolecularFormula",
         "MolecularWeight",
@@ -124,7 +123,7 @@ def get_cid_properties(request: CIDPropertiesRequest) -> str:
         "Charge",
     ]
 
-    endpoint = f"/compound/cid/{request.cid}/property/{','.join(properties)}/JSON"
+    endpoint = f"/compound/cid/{cid}/property/{','.join(properties)}/JSON"
     result = pubchem_client.get(endpoint)
 
     if "error" in result:
@@ -132,12 +131,12 @@ def get_cid_properties(request: CIDPropertiesRequest) -> str:
 
     props_table = result.get("PropertyTable", {}).get("Properties", [])
     if not props_table:
-        return f"No properties found for CID {request.cid}"
+        return f"No properties found for CID {cid}"
 
     props = props_table[0]
 
     # Build natural language summary
-    summary_parts: List[str] = [f"Properties of PubChem CID {request.cid}:"]
+    summary_parts: List[str] = [f"Properties of PubChem CID {cid}:"]
 
     # Basic info
     formula = props.get("MolecularFormula")
@@ -229,16 +228,17 @@ def get_cid_properties(request: CIDPropertiesRequest) -> str:
 # ==================== Bioassay & Activity Tools ====================
 
 
-class BioassayResultsRequest(BaseModel):
-    cid: Union[int, str] = Field(description="PubChem Compound ID (CID)")
-    max_assays: int = Field(
-        default=5, ge=1, le=100, description="Maximum number of bioassays to summarize"
-    )
+def get_bioassay_summary(cid: Union[int, str], max_assays: int = 5) -> str:
+    """Get a summary of bioassay results for a compound, focusing on the most relevant therapeutic activities.
 
+    Args:
+        cid (Union[int, str]): PubChem Compound ID (CID)
+        max_assays (int, optional): Maximum number of bioassays to summarize (1-100). Defaults to 5.
 
-def get_bioassay_summary(request: BioassayResultsRequest) -> str:
-    """Get a summary of bioassay results for a compound, focusing on the most relevant therapeutic activities."""
-    endpoint = f"/compound/cid/{request.cid}/assaysummary/JSON"
+    Returns:
+        str: Natural language summary of bioassay results
+    """
+    endpoint = f"/compound/cid/{cid}/assaysummary/JSON"
     result = pubchem_client.get(endpoint)
 
     if "error" in result:
@@ -248,7 +248,7 @@ def get_bioassay_summary(request: BioassayResultsRequest) -> str:
     rows: List[Dict[str, Any]] = table.get("Row", [])
 
     if not rows:
-        return f"No bioassay data found for CID {request.cid}"
+        return f"No bioassay data found for CID {cid}"
 
     columns: List[str] = table.get("Columns", {}).get("Column", [])
 
@@ -273,21 +273,21 @@ def get_bioassay_summary(request: BioassayResultsRequest) -> str:
 
     # Build summary
     summary_parts = [
-        f"Bioassay summary for CID {request.cid}:",
+        f"Bioassay summary for CID {cid}:",
         f"Tested in {len(rows)} assays - {len(active_assays)} active, {len(inactive_assays)} inactive",
     ]
 
     if active_assays:
         summary_parts.append("\nActive in:")
-        for assay in active_assays[: request.max_assays]:
+        for assay in active_assays[:max_assays]:
             aid = assay.get("AID", "Unknown")
             name = assay.get("Assay Name", "Unknown assay")
             name = name if len(name) <= 100 else name[:97] + "..."
             summary_parts.append(f"• AID {aid}: {name} \n")
 
-    if len(active_assays) > request.max_assays:
+    if len(active_assays) > max_assays:
         summary_parts.append(
-            f"(Showing {request.max_assays} of {len(active_assays)} active assays)"
+            f"(Showing {max_assays} of {len(active_assays)} active assays)"
         )
 
     return "\n".join(summary_parts)
@@ -296,28 +296,31 @@ def get_bioassay_summary(request: BioassayResultsRequest) -> str:
 # ==================== Safety & Drug Information Tools ====================
 
 
-class SafetyDataRequest(BaseModel):
-    cid: Union[int, str] = Field(description="PubChem Compound ID (CID)")
+def get_safety_summary(cid: Union[int, str]) -> str:
+    """Get safety information including GHS classification and hazard warnings for a compound.
 
+    Args:
+        cid (Union[int, str]): PubChem Compound ID (CID)
 
-def get_safety_summary(request: SafetyDataRequest) -> str:
-    """Get safety information including GHS classification and hazard warnings for a compound."""
-    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{request.cid}/JSON"
+    Returns:
+        str: Natural language summary of safety information
+    """
+    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON"
     try:
         response = pubchem_client.client.get(
             url, params={"heading": "GHS Classification"}
         )
         response.raise_for_status()
     except httpx.HTTPError:
-        return f"No safety data available for CID {request.cid}"
+        return f"No safety data available for CID {cid}"
 
     try:
         data = response.json()
         sections = data.get("Record", {}).get("Section", [])
         if not sections:
-            return f"No GHS safety classification found for CID {request.cid}"
+            return f"No GHS safety classification found for CID {cid}"
 
-        summary_parts: List[str] = [f"Safety information for CID {request.cid}:"]
+        summary_parts: List[str] = [f"Safety information for CID {cid}:"]
 
         for section in sections:
             if section.get("TOCHeading") == "GHS Classification":
@@ -363,36 +366,39 @@ def get_safety_summary(request: SafetyDataRequest) -> str:
                                     )
 
         if len(summary_parts) == 1:
-            return f"Limited safety data available for CID {request.cid}"
+            return f"Limited safety data available for CID {cid}"
 
         return "\n".join(summary_parts)
 
     except Exception as e:
-        return f"Error parsing safety data for CID {request.cid}: {str(e)}"
+        return f"Error parsing safety data for CID {cid}: {str(e)}"
 
 
-class DrugDataRequest(BaseModel):
-    cid: Union[int, str] = Field(description="PubChem Compound ID (CID)")
+def get_drug_summary(cid: Union[int, str]) -> str:
+    """Get drug and medication information for a compound including therapeutic uses and pharmacology.
 
+    Args:
+        cid (Union[int, str]): PubChem Compound ID (CID)
 
-def get_drug_summary(request: DrugDataRequest) -> str:
-    """Get drug and medication information for a compound including therapeutic uses and pharmacology."""
-    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{request.cid}/JSON"
+    Returns:
+        str: Natural language summary of drug information
+    """
+    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON"
     try:
         response = pubchem_client.client.get(
             url, params={"heading": "Drug and Medication Information"}
         )
         response.raise_for_status()
     except httpx.HTTPError:
-        return f"No drug information available for CID {request.cid}"
+        return f"No drug information available for CID {cid}"
 
     try:
         data = response.json()
         sections = data.get("Record", {}).get("Section", [])
         if not sections:
-            return f"No drug/medication data found for CID {request.cid}"
+            return f"No drug/medication data found for CID {cid}"
 
-        summary_parts: List[str] = [f"Drug information for CID {request.cid}:"]
+        summary_parts: List[str] = [f"Drug information for CID {cid}:"]
 
         for section in sections:
             for subsection in section.get("Section", []):
@@ -444,31 +450,15 @@ def get_drug_summary(request: DrugDataRequest) -> str:
                             summary_parts.append(f"{name}: {value_str}")
 
         if len(summary_parts) == 1:
-            return f"CID {request.cid} - no specific drug/medication information available (may not be an approved drug)"
+            return f"CID {cid} - no specific drug/medication information available (may not be an approved drug)"
 
         return "\n".join(summary_parts)
 
     except Exception as e:
-        return f"Error parsing drug data for CID {request.cid}: {str(e)}"
+        return f"Error parsing drug data for CID {cid}: {str(e)}"
 
 
 # ==================== Structure Similarity Tools ====================
-
-
-class SimilaritySearchRequest(BaseModel):
-    cid: Union[int, str] = Field(description="PubChem CID of the query compound")
-    threshold: int = Field(
-        default=90,
-        ge=80,
-        le=100,
-        description="Similarity threshold percentage (80-100)",
-    )
-    max_results: int = Field(
-        default=5,
-        ge=1,
-        le=10,
-        description="Maximum number of similar compounds to return",
-    )
 
 
 def _poll_for_results(
@@ -488,15 +478,24 @@ def _poll_for_results(
     return {"error": f"Search timed out after {max_wait_time} seconds"}
 
 
-def find_similar_compounds(request: SimilaritySearchRequest) -> str:
-    """Find compounds similar to a given CID, useful for scaffold hopping and analog identification."""
+def find_similar_compounds(
+    cid: Union[int, str], threshold: int = 90, max_results: int = 5
+) -> str:
+    """Find compounds similar to a given CID, useful for scaffold hopping and analog identification.
+
+    Args:
+        cid (Union[int, str]): PubChem CID of the query compound
+        threshold (int, optional): Similarity threshold percentage (80-100). Defaults to 90.
+        max_results (int, optional): Maximum number of similar compounds to return (1-10). Defaults to 5.
+
+    Returns:
+        str: Natural language summary of similar compounds
+    """
     # Fetch SMILES for the query CID
-    props_endpoint = f"/compound/cid/{request.cid}/property/CanonicalSMILES/JSON"
+    props_endpoint = f"/compound/cid/{cid}/property/CanonicalSMILES/JSON"
     props_result = pubchem_client.get(props_endpoint)
     if "error" in props_result:
-        return (
-            f"Error retrieving structure for CID {request.cid}: {props_result['error']}"
-        )
+        return f"Error retrieving structure for CID {cid}: {props_result['error']}"
 
     smiles = (
         props_result.get("PropertyTable", {})
@@ -504,11 +503,11 @@ def find_similar_compounds(request: SimilaritySearchRequest) -> str:
         .get("CanonicalSMILES")
     )
     if not smiles:
-        return f"Could not retrieve structure for CID {request.cid}"
+        return f"Could not retrieve structure for CID {cid}"
 
     # Submit similarity search
     endpoint = "/compound/similarity/smiles/JSON"
-    params = {"Threshold": request.threshold, "MaxRecords": request.max_results * 2}
+    params = {"Threshold": threshold, "MaxRecords": max_results * 2}
     post_result = pubchem_client.post(endpoint, params=params, data={"smiles": smiles})
 
     if "error" in post_result:
@@ -524,34 +523,34 @@ def find_similar_compounds(request: SimilaritySearchRequest) -> str:
         # Poll until results ready
         results = _poll_for_results(list_key)
         if not results or "error" in results:
-            return f"No similar compounds found for CID {request.cid} at {request.threshold}% similarity"
+            return (
+                f"No similar compounds found for CID {cid} at {threshold}% similarity"
+            )
         found_cids = results.get("IdentifierList", {}).get("CID", [])
 
     # Filter out self and trim
-    similar_cids = [cid for cid in found_cids if str(cid) != str(request.cid)][
-        : request.max_results
-    ]
+    similar_cids = [c for c in found_cids if str(c) != str(cid)][:max_results]
     if not similar_cids:
-        return f"No similar compounds found for CID {request.cid} at {request.threshold}% similarity threshold"
+        return f"No similar compounds found for CID {cid} at {threshold}% similarity threshold"
 
     # Enrich with names/formulas
     props_endpoint = f"/compound/cid/{','.join(map(str, similar_cids))}/property/IUPACName,MolecularFormula/JSON"
     props_result = pubchem_client.get(props_endpoint)
 
     summary_parts = [
-        f"Found {len(similar_cids)} compounds similar to CID {request.cid} (≥{request.threshold}% Tanimoto):"
+        f"Found {len(similar_cids)} compounds similar to CID {cid} (≥{threshold}% Tanimoto):"
     ]
 
     if "error" not in props_result and props_result.get("PropertyTable"):
         for prop in props_result["PropertyTable"]["Properties"]:
-            cid = prop.get("CID")
+            cid_val = prop.get("CID")
             name = prop.get("IUPACName", "No name")
             formula = prop.get("MolecularFormula", "")
             if len(name) > 50:
                 name = name[:47] + "..."
-            summary_parts.append(f"• CID {cid}: {name} ({formula})")
+            summary_parts.append(f"• CID {cid_val}: {name} ({formula})")
     else:
-        summary_parts.extend([f"• CID {cid}" for cid in similar_cids])
+        summary_parts.extend([f"• CID {c}" for c in similar_cids])
 
     return "\n".join(summary_parts)
 

@@ -16,7 +16,9 @@ mlflow.autolog()
 
 load_dotenv("../.env")
 dspy.configure(
-    lm=dspy.LM("gemini/gemini-2.5-pro", temperature=0.5, cache=False, rollout_id=1)
+    lm=dspy.LM(
+        "gemini/gemini-2.5-flash-lite", temperature=0.5, cache=False, rollout_id=1
+    )
 )
 
 COMPOUND = "Luminespib"

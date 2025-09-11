@@ -3,7 +3,7 @@
 ChEMBL Standalone Tools - Synchronous functions with natural language outputs
 """
 
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any
 import httpx
 
 
@@ -25,7 +25,7 @@ class ChEMBLClient:
             },
         )
 
-    def get(self, endpoint: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    def get(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Make GET request to ChEMBL API"""
         try:
             response = self.client.get(endpoint, params=params)
@@ -180,7 +180,7 @@ def get_compound_properties(chembl_id: str) -> str:
 
 
 def get_compound_bioactivities_summary(
-    chembl_id: str, activity_type: Optional[str] = None, max_results: int = 5
+    chembl_id: str, activity_type: str = None, max_results: int = 5
 ) -> str:
     """Get a summary of the most relevant bioactivities for a compound, focusing on potency data useful for drug discovery.
 
