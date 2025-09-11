@@ -4,8 +4,8 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 import dspy
 
-from .cf_efficacy.cf_efficacy_agent import CFEfficacyAgent
-from .toxicity_screening.toxicity_screening_agent import ToxicityScreeningAgent
+from .cf_efficacy_agent import CFEfficacyAgent
+from .toxicity_screening_agent import ToxicityScreeningAgent
 
 
 class CompoundPrioritization(dspy.Signature):
@@ -29,8 +29,8 @@ class CompoundPrioritizationAgent(dspy.Module):
     def __init__(self):
         super().__init__()
         # Sub-agents
-        self.efficacy_agent = CFEfficacyAgent(max_iters=8)
-        self.toxicity_agent = ToxicityScreeningAgent(max_iters=8)
+        self.efficacy_agent = CFEfficacyAgent(max_iters=3)
+        self.toxicity_agent = ToxicityScreeningAgent(max_iters=3)
 
         # Coordination predictor
         self.coordinator = dspy.ChainOfThought(CompoundPrioritization)
