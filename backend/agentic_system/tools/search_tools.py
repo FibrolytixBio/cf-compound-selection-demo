@@ -190,7 +190,7 @@ def _format_pubmed_abstracts(raw_text: str, query: str) -> str:
             text_blocks.remove(text_block)
         if text_block.startswith("Conflict of interest statement:"):
             text_blocks.remove(text_block)
-        if text_block.startswith("Copyright"):
+        if "©" in text_block:
             text_blocks.remove(text_block)
 
     return "\n\n".join(text_blocks)

@@ -4,7 +4,7 @@ import dspy
 
 from ....tools.tool_utils import get_mcp_tools
 
-from ....tools.search import search_web, search_pubmed_abstracts
+from ....tools.search_tools import search_web, search_pubmed_abstracts
 from ....tools.litl_tools import get_experimental_efficacy_reasoning
 
 TOOLS = [search_web, search_pubmed_abstracts]  # , get_experimental_efficacy_reasoning]

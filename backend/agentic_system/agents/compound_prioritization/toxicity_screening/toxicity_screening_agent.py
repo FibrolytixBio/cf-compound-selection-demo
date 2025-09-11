@@ -5,7 +5,7 @@ import dspy
 
 from ....tools.tool_utils import get_mcp_tools
 
-from ....tools.search import search_web, search_pubmed_abstracts
+from ....tools.search_tools import search_web, search_pubmed_abstracts
 
 TOOLS = [search_web, search_pubmed_abstracts]
 

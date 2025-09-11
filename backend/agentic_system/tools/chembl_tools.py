@@ -55,11 +55,47 @@ class CompoundSearchRequest(BaseModel):
     )
 
 
-def search_chembl_id(request: CompoundSearchRequest) -> str:
-    """Search for ChEMBL IDs by compound name, synonym, or identifier. Returns only the ChEMBL IDs for efficient lookup."""
+# def search_chembl_id(request: CompoundSearchRequest) -> str:
+#     """Search for ChEMBL IDs by compound name, synonym, or identifier. Returns only the ChEMBL IDs for efficient lookup."""
+#     params = {
+#         "q": request.query,
+#         "limit": request.limit,
+#     }
+#     result = chembl_client.get("/molecule/search.json", params=params)
+
+#     if "error" in result:
+#         return f"Error searching for compound: {result['error']}"
+
+#     molecules = result.get("molecules", [])
+#     if not molecules:
+#         return f"No compounds found matching '{request.query}'"
+
+#     # Extract just the ChEMBL IDs and preferred names
+#     compounds = []
+#     for mol in molecules[: request.limit]:
+#         chembl_id = mol.get("molecule_chembl_id", "Unknown")
+#         pref_name = mol.get("pref_name", "No name")
+#         compounds.append(f"{chembl_id} ({pref_name})")
+
+#     return (
+#         f"Found {len(compounds)} compound(s) matching '{request.query}': "
+#         + "\n - ".join(compounds)
+#     )
+
+
+def search_chembl_id(query: str, limit: int = 5) -> str:
+    """Search for ChEMBL IDs by compound name, synonym, or identifier. Returns only the ChEMBL IDs for efficient lookup.
+
+    Args:
+        query (str): Compound name, synonym, or identifier to search for
+        limit (int, optional): Maximum number of results to return (1-10). Defaults to 5.
+
+    Returns:
+        str: Natural language summary of search results
+    """
     params = {
-        "q": request.query,
-        "limit": request.limit,
+        "q": query,
+        "limit": limit,
     }
     result = chembl_client.get("/molecule/search.json", params=params)
 
@@ -68,18 +104,17 @@ def search_chembl_id(request: CompoundSearchRequest) -> str:
 
     molecules = result.get("molecules", [])
     if not molecules:
-        return f"No compounds found matching '{request.query}'"
+        return f"No compounds found matching '{query}'"
 
     # Extract just the ChEMBL IDs and preferred names
     compounds = []
-    for mol in molecules[: request.limit]:
+    for mol in molecules[:limit]:
         chembl_id = mol.get("molecule_chembl_id", "Unknown")
         pref_name = mol.get("pref_name", "No name")
         compounds.append(f"{chembl_id} ({pref_name})")
 
-    return (
-        f"Found {len(compounds)} compound(s) matching '{request.query}': "
-        + ", ".join(compounds)
+    return f"Found {len(compounds)} compound(s) matching '{query}': " + "\n - ".join(
+        compounds
     )
 
 
@@ -259,7 +294,7 @@ def get_compound_bioactivities_summary(request: CompoundBioactivitiesRequest) ->
             )
 
         summary_parts.append(
-            f"• {target_name} ({target_id}): " + ", ".join(activity_summary)
+            f"• {target_name} ({target_id}): " + ", ".join(activity_summary) + "\n"
         )
         count += 1
 
@@ -514,8 +549,8 @@ def get_target_activities_summary(request: TargetActivitiesRequest) -> str:
 CHEMBL_TOOLS = [
     search_chembl_id,
     get_compound_properties,
-    get_compound_bioactivities_summary,
-    get_drug_info_summary,
-    search_target_id,
-    get_target_activities_summary,
+    # get_compound_bioactivities_summary,
+    # get_drug_info_summary,
+    # search_target_id,
+    # get_target_activities_summary,
 ]

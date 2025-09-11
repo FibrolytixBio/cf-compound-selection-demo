@@ -101,7 +101,7 @@ def search_pubchem_cid(request: SearchCompoundsRequest) -> str:
 
     return (
         f"Found {min(len(cids), request.limit)} compound(s) matching '{request.query}': CIDs "
-        + ", ".join(map(str, cids[: request.limit]))
+        + "\n - ".join(map(str, cids[: request.limit]))
     )
 
 
@@ -232,7 +232,7 @@ def get_cid_properties(request: CIDPropertiesRequest) -> str:
 class BioassayResultsRequest(BaseModel):
     cid: Union[int, str] = Field(description="PubChem Compound ID (CID)")
     max_assays: int = Field(
-        default=5, ge=1, le=10, description="Maximum number of bioassays to summarize"
+        default=5, ge=1, le=100, description="Maximum number of bioassays to summarize"
     )
 
 
