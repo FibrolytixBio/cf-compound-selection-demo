@@ -96,7 +96,7 @@ def search_pubchem_cid(query: str, limit: int = 5) -> str:
             return f"Found PubChem CID {cids[0]} ({name}) for '{query}'"
 
     return (
-        f"Found {min(len(cids), limit)} compound(s) matching '{query}': CIDs "
+        f"Found {min(len(cids), limit)} compound(s) matching '{query}': CIDs \n - "
         + "\n - ".join(map(str, cids[:limit]))
     )
 

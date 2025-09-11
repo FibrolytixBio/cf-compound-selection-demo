@@ -23,6 +23,6 @@ dspy.configure(
 
 COMPOUND = "Luminespib"
 
-agent = CFEfficacyAgent(max_iters=3)
+agent = CFEfficacyAgent(max_iters=15)
 result = agent(compound_name=COMPOUND)
 print(result)

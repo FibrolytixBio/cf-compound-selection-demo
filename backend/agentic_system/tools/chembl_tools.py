@@ -75,8 +75,9 @@ def search_chembl_id(query: str, limit: int = 5) -> str:
         pref_name = mol.get("pref_name", "No name")
         compounds.append(f"{chembl_id} ({pref_name})")
 
-    return f"Found {len(compounds)} compound(s) matching '{query}': " + "\n - ".join(
-        compounds
+    return (
+        f"Found {len(compounds)} compound(s) matching '{query}': \n - "
+        + "\n - ".join(compounds)
     )
 
 
@@ -296,6 +297,10 @@ def get_drug_info_summary(chembl_id: str) -> str:
             summaries.append(
                 f"{chembl_id} is an approved drug (first approved: {drug['first_approval']})"
             )
+        else:
+            summaries.append(f"{chembl_id} is not an approved drug")
+    else:
+        summaries.append(f"{chembl_id} is not an approved drug")
 
     # 2. Mechanism of action
     moa_result = chembl_client.get(
@@ -303,12 +308,22 @@ def get_drug_info_summary(chembl_id: str) -> str:
     )
 
     if "error" not in moa_result and moa_result.get("mechanisms"):
-        moa_parts = ["Mechanism of action:"]
-        for mech in moa_result["mechanisms"][:3]:  # Top 3 mechanisms
-            target_name = mech.get("target_name", "Unknown target")
-            action_type = mech.get("action_type", "Unknown action")
-            moa_parts.append(f"• {action_type} of {target_name}")
-        summaries.append(" ".join(moa_parts))
+        mechanisms = moa_result["mechanisms"]
+        if mechanisms:
+            moa_summaries = []
+            for mech in mechanisms:
+                moa = mech.get("mechanism_of_action", "")
+                action_type = mech.get("action_type", "")
+                target_id = mech.get("target_chembl_id", "")
+                if moa:
+                    summary = f"{moa}"
+                    if action_type:
+                        summary += f" ({action_type})"
+                    if target_id:
+                        summary += f" targeting {target_id}"
+                    moa_summaries.append(summary)
+            if moa_summaries:
+                summaries.append("Mechanisms of action: " + "; ".join(moa_summaries))
 
     # 3. Drug indications
     indication_result = chembl_client.get(
@@ -317,28 +332,22 @@ def get_drug_info_summary(chembl_id: str) -> str:
     )
 
     if "error" not in indication_result and indication_result.get("drug_indications"):
-        indication_parts = ["Approved/investigated for:"]
-        indications_by_phase = {}
-
-        for ind in indication_result["drug_indications"]:
-            phase = ind.get("max_phase_for_ind", 0)
-            indication = ind.get("indication", "Unknown")
-
-            if phase not in indications_by_phase:
-                indications_by_phase[phase] = []
-            indications_by_phase[phase].append(indication)
-
-        # Show highest phase indications first
-        for phase in sorted(indications_by_phase.keys(), reverse=True):
-            try:
-                phase_int = int(phase) if phase else 0
-                phase_name = f"Phase {phase_int}" if phase_int > 0 else "Preclinical"
-            except (ValueError, TypeError):
-                phase_name = f"Phase {phase}" if phase else "Unknown"
-            for indication in indications_by_phase[phase][:3]:  # Top 3 per phase
-                indication_parts.append(f"• {indication} ({phase_name})")
-
-        summaries.append(" ".join(indication_parts))
+        indications = indication_result["drug_indications"]
+        if indications:
+            ind_summaries = []
+            for ind in indications:
+                term = ind.get("efo_term", "")
+                phase = ind.get("max_phase_for_ind", "")
+                mesh = ind.get("mesh_heading", "")
+                if term:
+                    summary = term
+                    if phase:
+                        summary += f" (Phase {phase})"
+                    if mesh and mesh != term:
+                        summary += f" ({mesh})"
+                    ind_summaries.append(summary)
+            if ind_summaries:
+                summaries.append("Drug indications: " + ", ".join(ind_summaries))
 
     # 4. Drug warnings
     warning_result = chembl_client.get(
@@ -347,14 +356,19 @@ def get_drug_info_summary(chembl_id: str) -> str:
     )
 
     if "error" not in warning_result and warning_result.get("drug_warnings"):
-        warning_parts = ["Safety warnings:"]
-        for warn in warning_result["drug_warnings"]:
-            warning_parts.append(f"• {warn.get('warning_type', 'Unknown warning')}")
-            if warn.get("warning_description"):
-                warning_parts.append(
-                    f"  Details: {warn['warning_description'][:100]}..."
-                )
-        summaries.append(" ".join(warning_parts))
+        warnings = warning_result["drug_warnings"]
+        if warnings:
+            warn_summaries = []
+            for warn in warnings:
+                warn_type = warn.get("warning_type", "")
+                desc = warn.get("warning_description", "")
+                if desc:
+                    summary = desc
+                    if warn_type:
+                        summary = f"{warn_type}: {desc}"
+                    warn_summaries.append(summary)
+            if warn_summaries:
+                summaries.append("Drug warnings: " + "; ".join(warn_summaries))
 
     if not summaries:
         return f"No drug information found for {chembl_id} - this may not be an approved drug or drug candidate"
@@ -518,3 +532,12 @@ CHEMBL_TOOLS = [
     search_target_id,
     get_target_activities_summary,
 ]
+
+
+if __name__ == "__main__":
+    import dotenv
+
+    dotenv.load_dotenv("../../../.env")
+
+    # Example usage
+    print(get_drug_info_summary("CHEMBL252164"))
