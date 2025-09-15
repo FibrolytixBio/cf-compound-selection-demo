@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """
-ChEMBL Standalone Tools - Asynchronous functions with caching
+ChEMBL Standalone Tools - Synchronous functions with natural language outputs
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import httpx
-import asyncio
 from agentic_system.tools.tool_utils import FileBasedRateLimiter
 from agentic_system.tools.tool_utils import tool_cache
 
@@ -19,7 +18,7 @@ class ChEMBLClient:
     """HTTP client for ChEMBL API interactions"""
 
     def __init__(self):
-        self.client = httpx.AsyncClient(
+        self.client = httpx.Client(
             base_url=CHEMBL_BASE_URL,
             timeout=TIMEOUT,
             headers={
@@ -31,12 +30,11 @@ class ChEMBLClient:
             max_requests=2, time_window=1.0, name="chembl"
         )
 
-    async def get(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+    def get(self, endpoint: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Make GET request to ChEMBL API"""
-        # For async, we'll use a simple sleep-based rate limiting
-        await asyncio.sleep(0.5)  # Simple rate limiting
+        self.rate_limiter.acquire_sync()
         try:
-            response = await self.client.get(endpoint, params=params)
+            response = self.client.get(endpoint, params=params)
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -92,11 +90,11 @@ def search_chembl_id(query: str, limit: int = 5) -> str:
 
 
 @tool_cache(cache_name)
-async def get_compound_bioactivities(
+def get_compound_bioactivities(
     chembl_id: str,
-    max_results: Optional[int] = 10,
-    activity_type: Optional[str] = None,
-    max_activity_value: Optional[float] = None,
+    max_results: int = 10,
+    activity_type: str = None,
+    max_activity_value: float = None,
 ) -> Dict[str, Any]:
     """Retrieve all reported bioactivities for a given ChEMBL compound.
 
@@ -118,11 +116,11 @@ async def get_compound_bioactivities(
     if max_activity_value is not None:
         params["standard_value__lt"] = max_activity_value
 
-    return await chembl_client.get("/activity.json", params=params)
+    return chembl_client.get("/activity.json", params=params)
 
 
 @tool_cache(cache_name)
-async def get_activity_info(activity_id: int) -> Dict[str, Any]:
+def get_activity_info(activity_id: int) -> Dict[str, Any]:
     """Return the full ChEMBL activity record for a specific activity.
 
     Args:
@@ -131,14 +129,14 @@ async def get_activity_info(activity_id: int) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Raw ChEMBL API response with activity record
     """
-    return await chembl_client.get(
+    return chembl_client.get(
         "/activity.json",
         params={"activity_id": activity_id},
     )
 
 
 @tool_cache(cache_name)
-async def get_assay_info(assay_id: str) -> Dict[str, Any]:
+def get_assay_info(assay_id: str) -> Dict[str, Any]:
     """Return ChEMBL assay metadata for a specific assay.
 
     Args:
@@ -147,16 +145,14 @@ async def get_assay_info(assay_id: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Raw ChEMBL API response with assay metadata
     """
-    return await chembl_client.get(
+    return chembl_client.get(
         "/assay.json",
         params={"assay_chembl_id": assay_id},
     )
 
 
 @tool_cache(cache_name)
-async def get_mechanisms_of_action(
-    chembl_id: str, max_results: int = 10
-) -> Dict[str, Any]:
+def get_mechanisms_of_action(chembl_id: str, max_results: int = 10) -> Dict[str, Any]:
     """Return ChEMBL's curated mechanism of action data for a given compound.
 
     Args:
@@ -166,7 +162,7 @@ async def get_mechanisms_of_action(
     Returns:
         Dict[str, Any]: Raw ChEMBL API response with mechanism of action data
     """
-    return await chembl_client.get(
+    return chembl_client.get(
         "/mechanism.json",
         params={
             "molecule_chembl_id": chembl_id,
@@ -176,7 +172,7 @@ async def get_mechanisms_of_action(
 
 
 @tool_cache(cache_name)
-async def get_molecule_info(chembl_id: str, max_results: int = 10) -> Dict[str, Any]:
+def get_molecule_info(chembl_id: str, max_results: int = 10) -> Dict[str, Any]:
     """Return ChEMBL's curated properties and metadata for a given compound, including calculated drug properties.
 
     Args:
@@ -186,7 +182,7 @@ async def get_molecule_info(chembl_id: str, max_results: int = 10) -> Dict[str, 
     Returns:
         Dict[str, Any]: Raw ChEMBL API response with molecule information and properties
     """
-    return await chembl_client.get(
+    return chembl_client.get(
         "/molecule.json",
         params={
             "molecule_chembl_id": chembl_id,
@@ -196,7 +192,7 @@ async def get_molecule_info(chembl_id: str, max_results: int = 10) -> Dict[str, 
 
 
 @tool_cache(cache_name)
-async def get_drug_info(chembl_id: str, max_results: int = 10) -> Dict[str, Any]:
+def get_drug_info(chembl_id: str, max_results: int = 10) -> Dict[str, Any]:
     """Return drug info for a given compound, including drug name, type, and status.
 
     Args:
@@ -206,7 +202,7 @@ async def get_drug_info(chembl_id: str, max_results: int = 10) -> Dict[str, Any]
     Returns:
         Dict[str, Any]: Raw ChEMBL API response with drug information
     """
-    return await chembl_client.get(
+    return chembl_client.get(
         "/drug.json",
         params={
             "molecule_chembl_id": chembl_id,
@@ -216,7 +212,7 @@ async def get_drug_info(chembl_id: str, max_results: int = 10) -> Dict[str, Any]
 
 
 @tool_cache(cache_name)
-async def get_drug_indications(chembl_id: str, max_results: int = 10) -> Dict[str, Any]:
+def get_drug_indications(chembl_id: str, max_results: int = 10) -> Dict[str, Any]:
     """Return drug indications for a given compound, including disease and max phase.
 
     Args:
@@ -226,7 +222,7 @@ async def get_drug_indications(chembl_id: str, max_results: int = 10) -> Dict[st
     Returns:
         Dict[str, Any]: Raw ChEMBL API response with drug indications
     """
-    return await chembl_client.get(
+    return chembl_client.get(
         "/drug_indication.json",
         params={
             "molecule_chembl_id": chembl_id,
@@ -236,7 +232,7 @@ async def get_drug_indications(chembl_id: str, max_results: int = 10) -> Dict[st
 
 
 @tool_cache(cache_name)
-async def get_drug_warning(chembl_id: str, max_results: int = 10) -> Dict[str, Any]:
+def get_drug_warning(chembl_id: str, max_results: int = 10) -> Dict[str, Any]:
     """Return drug warnings for a given compound.
 
     Args:
@@ -246,7 +242,7 @@ async def get_drug_warning(chembl_id: str, max_results: int = 10) -> Dict[str, A
     Returns:
         Dict[str, Any]: Raw ChEMBL API response with drug warnings
     """
-    return await chembl_client.get(
+    return chembl_client.get(
         "/drug_warning.json",
         params={
             "molecule_chembl_id": chembl_id,
@@ -259,7 +255,7 @@ async def get_drug_warning(chembl_id: str, max_results: int = 10) -> Dict[str, A
 
 
 @tool_cache(cache_name)
-async def search_targets(query: str, limit: int = 10) -> Dict[str, Any]:
+def search_targets(query: str, limit: int = 10) -> Dict[str, Any]:
     """Search ChEMBL database for biological targets by name, gene symbol, or identifier.
 
     Args:
@@ -273,11 +269,11 @@ async def search_targets(query: str, limit: int = 10) -> Dict[str, Any]:
         "q": query,
         "limit": limit,
     }
-    return await chembl_client.get("/target/search.json", params=params)
+    return chembl_client.get("/target/search.json", params=params)
 
 
 @tool_cache(cache_name)
-async def get_target_information(
+def get_target_information(
     target_chembl_id: str, max_results: int = 10
 ) -> Dict[str, Any]:
     """Return biological details for a ChEMBL target (e.g., UniProt ID, GO terms).
@@ -289,7 +285,7 @@ async def get_target_information(
     Returns:
         Dict[str, Any]: Raw ChEMBL API response with target information
     """
-    return await chembl_client.get(
+    return chembl_client.get(
         "/target.json",
         params={
             "target_chembl_id": target_chembl_id,
@@ -299,11 +295,11 @@ async def get_target_information(
 
 
 @tool_cache(cache_name)
-async def get_active_compounds(
+def get_active_compounds(
     target_chembl_id: str,
-    max_results: Optional[int] = 10,
-    activity_type: Optional[str] = None,
-    max_activity_value: Optional[float] = None,
+    max_results: int = 10,
+    activity_type: str = None,
+    max_activity_value: float = None,
 ) -> Dict[str, Any]:
     """Retrieve active compounds against a specific ChEMBL target with a potency filter.
 
@@ -325,7 +321,7 @@ async def get_active_compounds(
     if max_activity_value is not None:
         params["standard_value__lt"] = max_activity_value
 
-    return await chembl_client.get("/activity.json", params=params)
+    return chembl_client.get("/activity.json", params=params)
 
 
 # ============================ Function List ============================
@@ -355,10 +351,5 @@ if __name__ == "__main__":
     dotenv.load_dotenv("../../../.env")
 
     # test get_active_compounds
-    async def test():
-        result = await get_active_compounds(
-            "CHEMBL4303", activity_type="IC50", max_results=5
-        )
-        print(result)
-
-    asyncio.run(test())
+    result = get_active_compounds("CHEMBL4303", activity_type="IC50", max_results=5)
+    print(result)
