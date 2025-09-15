@@ -4,8 +4,8 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 import dspy
 
-from ..tools.chembl_tools import CHEMBL_TOOLS
-from ..tools.pubchem_tools import PUBCHEM_TOOLS
+from ..tools.chembl_tools_raw import CHEMBL_TOOLS
+from ..tools.pubchem_tools_raw import PUBCHEM_TOOLS
 from ..tools.search_tools import SEARCH_TOOLS
 
 
