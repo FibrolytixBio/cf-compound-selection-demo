@@ -10,27 +10,25 @@ from ..tools.search_tools import SEARCH_TOOLS
 
 
 class EfficacyAssessment(dspy.Signature):
-    """Estimate efficacy of a compound for reversing cardiac fibrosis in a screening assay
+    """
+    Estimate the efficacy of a compound at reversing the activated cardiac fibroblast phenotype using a Cell Painting + ML readout, as measured by a custom in vitro assay.
+    - Assay: 10 µM compound (in DMSO) is applied to primary human ventricular fibroblasts in 96-well plates for 72 h alongside a DMSO-only control.
+    - Readout: multiplexed Cell Painting imaging is performed; single-cell morphology features are extracted and scored by a validated classifier that distinguishes “failing/activated” vs “nonfailing/quiescent-like” fibroblasts.
+    - Efficacy metric (0-1): predicted_efficacy = mean (P_nonfailing(cell_i | treated well)).
+      • 0 -> all cells appear activated (model assigns ~0 to treated cells).
+      • 1 -> all cells appear fully reverted (model assigns ~1 to treated cells).
 
-    Always use the `get_experimental_efficacy_reasoning` tool first (if it exists) to understand if there are relevant experimental results for the compound.
-    Always perform a search for existing preclinical data on the compound in a cardiac fibrosis context and give this evidence the highest priority when predicting efficacy.
+    Always perform a search for existing preclinical data on the compound in a cardiac fibrosis context and give that evidence the highest priority when predicting efficacy and confidence.
     """
 
     compound_name: str = dspy.InputField(
         desc="Name of the compound to assess efficacy for."
     )
     predicted_efficacy: float = dspy.OutputField(
-        desc="""
-        Estimate the compound efficacy (0-1) for reversing cardiac fibrosis in a screening assay.
-        In this screen a 10 uM solution of the compound is suspended in DMSO and applied to a well with primary human ventricular fibroblasts.
-        A score of 0 indicates no efficacy (no fibroblasts reversed), while a score of 1 indicates complete efficacy (all fibroblasts reversed).
-        """
+        desc="Predicted mean per-cell probability of nonfailing/quiescent-like state (0-1) in treated wells."
     )
     confidence: float = dspy.OutputField(
-        desc="""
-        Confidence as probability (0-1) that predicted remaining cell count is accurate.
-        Based on the availability, quality, and relevance of the data used to make the prediction.
-        """
+        desc="Confidence (0-1) based on abundance, relevance, and quality of evidence."
     )
 
 
