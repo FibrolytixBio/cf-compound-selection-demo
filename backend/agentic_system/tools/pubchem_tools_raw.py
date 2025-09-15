@@ -5,7 +5,7 @@ PubChem Standalone Tools - Synchronous functions with natural language outputs
 
 from typing import Dict, Any, Union, List
 import urllib.parse
-import asyncio
+import time
 
 import httpx
 from agentic_system.tools.tool_utils import FileBasedRateLimiter
@@ -111,9 +111,7 @@ def search_pubchem_cid(query: str, limit: int = 5) -> str:
 
 
 @tool_cache(cache_name)
-async def get_compound_info(
-    cid: Union[int, str], format: str = "json"
-) -> Dict[str, Any]:
+def get_compound_info(cid: Union[int, str], format: str = "json") -> Dict[str, Any]:
     """Retrieve detailed information for a specific compound by PubChem CID.
 
     Args:
@@ -123,12 +121,12 @@ async def get_compound_info(
     Returns:
         Dict[str, Any]: Raw PubChem API response with detailed compound information
     """
-    response = await pubchem_client.get(f"/compound/cid/{cid}/{format.upper()}")
+    response = pubchem_client.get(f"/compound/cid/{cid}/{format.upper()}")
     return response
 
 
 @tool_cache(cache_name)
-async def search_by_smiles(smiles: str) -> Dict[str, Any]:
+def search_by_smiles(smiles: str) -> Dict[str, Any]:
     """Search for compounds by SMILES string (exact match).
 
     Args:
@@ -138,11 +136,15 @@ async def search_by_smiles(smiles: str) -> Dict[str, Any]:
         Dict[str, Any]: Search results with query SMILES, found CID, and compound details
     """
     endpoint = f"/compound/smiles/{urllib.parse.quote(smiles)}/cids/JSON"
-    response = await pubchem_client.get(endpoint)
+    response = pubchem_client.get(endpoint)
 
-    cid = response["IdentifierList"]["CID"][0]
+    cids = response.get("IdentifierList", {}).get("CID", [])
+    if not cids:
+        return {"error": f"No compounds found for SMILES: {smiles}"}
+
+    cid = cids[0]
     details_endpoint = f"/compound/cid/{cid}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,IUPACName/JSON"
-    details_response = await pubchem_client.get(details_endpoint)
+    details_response = pubchem_client.get(details_endpoint)
 
     return {
         "query_smiles": smiles,
@@ -152,7 +154,7 @@ async def search_by_smiles(smiles: str) -> Dict[str, Any]:
 
 
 @tool_cache(cache_name)
-async def search_by_inchi(inchi: str) -> Dict[str, Any]:
+def search_by_inchi(inchi: str) -> Dict[str, Any]:
     """Search for compounds by InChI or InChI key.
 
     Args:
@@ -166,20 +168,22 @@ async def search_by_inchi(inchi: str) -> Dict[str, Any]:
     else:
         endpoint = f"/compound/inchikey/{urllib.parse.quote(inchi)}/cids/JSON"
 
-    res = await pubchem_client.get(endpoint)
+    res = pubchem_client.get(endpoint)
     cids = res.get("IdentifierList", {}).get("CID", [])
+    if not cids:
+        return {"error": f"No compounds found for InChI: {inchi}"}
 
     cid = cids[0]
     details_ep = (
         f"/compound/cid/{cid}/property/"
         "MolecularFormula,MolecularWeight,CanonicalSMILES,IUPACName/JSON"
     )
-    details = await pubchem_client.get(details_ep)
+    details = pubchem_client.get(details_ep)
     return {"query_inchi": inchi, "found_cid": cid, "details": details}
 
 
 @tool_cache(cache_name)
-async def search_by_cas_number(cas_number: str) -> Dict[str, Any]:
+def search_by_cas_number(cas_number: str) -> Dict[str, Any]:
     """Search for compounds by CAS Registry Number.
 
     Args:
@@ -189,20 +193,22 @@ async def search_by_cas_number(cas_number: str) -> Dict[str, Any]:
         Dict[str, Any]: Search results with CAS number, found CID, and compound details
     """
     endpoint = f"/compound/name/{urllib.parse.quote(cas_number)}/cids/JSON"
-    res = await pubchem_client.get(endpoint)
+    res = pubchem_client.get(endpoint)
     cids = res.get("IdentifierList", {}).get("CID", [])
+    if not cids:
+        return {"error": f"No compounds found for CAS number: {cas_number}"}
 
     cid = cids[0]
     details_ep = (
         f"/compound/cid/{cid}/property/"
         "MolecularFormula,MolecularWeight,CanonicalSMILES,IUPACName/JSON"
     )
-    details = await pubchem_client.get(details_ep)
+    details = pubchem_client.get(details_ep)
     return {"cas_number": cas_number, "found_cid": cid, "details": details}
 
 
 @tool_cache(cache_name)
-async def get_compound_synonyms(cid: Union[int, str]) -> Dict[str, Any]:
+def get_compound_synonyms(cid: Union[int, str]) -> Dict[str, Any]:
     """Get all names and synonyms for a compound.
 
     Args:
@@ -212,7 +218,7 @@ async def get_compound_synonyms(cid: Union[int, str]) -> Dict[str, Any]:
         Dict[str, Any]: Raw PubChem API response with compound synonyms and names
     """
     endpoint = f"/compound/cid/{cid}/synonyms/JSON"
-    response = await pubchem_client.get(endpoint)
+    response = pubchem_client.get(endpoint)
     return response
 
 
@@ -220,7 +226,7 @@ async def get_compound_synonyms(cid: Union[int, str]) -> Dict[str, Any]:
 
 
 @tool_cache(cache_name)
-async def search_similar_compounds(
+def search_similar_compounds(
     smiles: str, threshold: int = 90, max_records: int = 10
 ) -> Dict[str, Any]:
     """Find chemically similar compounds using Tanimoto similarity.
@@ -237,14 +243,13 @@ async def search_similar_compounds(
     params = {"Threshold": threshold, "MaxRecords": max_records}
     data = {"smiles": smiles}
 
-    response = await pubchem_client.client.post(endpoint, params=params, data=data)
-    result = response.json()
+    result = pubchem_client.post(endpoint, params=params, data=data)
     list_key = result["Waiting"]["ListKey"]
-    return await _poll_for_results(list_key)
+    return _poll_for_results(list_key)
 
 
 @tool_cache(cache_name)
-async def substructure_search(smiles: str, max_records: int = 10) -> Dict[str, Any]:
+def substructure_search(smiles: str, max_records: int = 10) -> Dict[str, Any]:
     """Find compounds containing a specific substructure.
 
     Args:
@@ -258,14 +263,13 @@ async def substructure_search(smiles: str, max_records: int = 10) -> Dict[str, A
     data = {"smiles": smiles}
     params = {"MaxRecords": max_records}
 
-    response = await pubchem_client.client.post(endpoint, params=params, data=data)
-    result = response.json()
+    result = pubchem_client.post(endpoint, params=params, data=data)
     list_key = result["Waiting"]["ListKey"]
-    return await _poll_for_results(list_key)
+    return _poll_for_results(list_key)
 
 
 @tool_cache(cache_name)
-async def superstructure_search(smiles: str, max_records: int = 10) -> Dict[str, Any]:
+def superstructure_search(smiles: str, max_records: int = 10) -> Dict[str, Any]:
     """Find larger compounds that contain the query structure.
 
     Args:
@@ -279,14 +283,13 @@ async def superstructure_search(smiles: str, max_records: int = 10) -> Dict[str,
     data = {"smiles": smiles}
     params = {"MaxRecords": max_records}
 
-    response = await pubchem_client.client.post(endpoint, params=params, data=data)
-    result = response.json()
+    result = pubchem_client.post(endpoint, params=params, data=data)
     list_key = result["Waiting"]["ListKey"]
-    return await _poll_for_results(list_key)
+    return _poll_for_results(list_key)
 
 
 @tool_cache(cache_name)
-async def get_3d_conformers(
+def get_3d_conformers(
     cid: Union[int, str], properties: List[str] = None
 ) -> Dict[str, Any]:
     """Get 3D conformer data and structural information.
@@ -315,11 +318,11 @@ async def get_3d_conformers(
             "YStericQuadrupole3D",
             "ZStericQuadrupole3D",
         ]
-    return await get_compound_properties(cid, properties)
+    return get_compound_properties(cid, properties)
 
 
 @tool_cache(cache_name)
-async def analyze_stereochemistry(
+def analyze_stereochemistry(
     cid: Union[int, str], properties: List[str] = None
 ) -> Dict[str, Any]:
     """Analyze stereochemistry, chirality, and isomer information.
@@ -341,35 +344,34 @@ async def analyze_stereochemistry(
             "UndefinedBondStereoCount",
             "IsotopeAtomCount",
         ]
-    return await get_compound_properties(cid, properties)
+    return get_compound_properties(cid, properties)
 
 
 # helper function to poll for results
-async def _poll_for_results(
+def _poll_for_results(
     list_key: str, max_wait_time: int = 30, poll_interval: int = 2
 ) -> Dict[str, Any]:
-    start_time = asyncio.get_event_loop().time()
+    start_time = time.time()
     endpoint = f"/compound/listkey/{list_key}/JSON"
 
     while True:
-        elapsed_time = asyncio.get_event_loop().time() - start_time
+        elapsed_time = time.time() - start_time
         if elapsed_time > max_wait_time:
             raise TimeoutError(f"Results not ready after {max_wait_time} seconds")
 
-        response = await pubchem_client.client.get(endpoint)
-        result = response.json()
+        result = pubchem_client.get(endpoint)
 
         if "Waiting" not in result and "Fault" not in result:
             return result
 
-        await asyncio.sleep(poll_interval)
+        time.sleep(poll_interval)
 
 
 # # ==================== Chemical Properties & Descriptors ====================
 
 
 @tool_cache(cache_name)
-async def get_compound_properties(
+def get_compound_properties(
     cid: Union[int, str], properties: List[str] = None
 ) -> Dict[str, Any]:
     """Get compound properties (MW, logP, TPSA, etc.).
@@ -395,12 +397,12 @@ async def get_compound_properties(
         ]
     joined_props = ",".join(properties)
     endpoint = f"/compound/cid/{cid}/property/{joined_props}/JSON"
-    response = await pubchem_client.get(endpoint)
+    response = pubchem_client.get(endpoint)
     return response
 
 
 @tool_cache(cache_name)
-async def get_pharmacophore_features(
+def get_pharmacophore_features(
     cid: Union[int, str], properties: List[str] = None
 ) -> Dict[str, Any]:
     """Get pharmacophore features and binding site information.
@@ -423,14 +425,14 @@ async def get_pharmacophore_features(
             "Volume3D",
             "Fingerprint2D",
         ]
-    return await get_compound_properties(cid, properties)
+    return get_compound_properties(cid, properties)
 
 
 # # ==================== Bioassay & Activity Data ====================
 
 
 @tool_cache(cache_name)
-async def get_bioassay_results(
+def get_bioassay_results(
     cid: Union[int, str], activity_outcome: str = "all", max_records: int = 10
 ) -> Dict[str, Any]:
     """Get all bioassay results and activities for a compound.
@@ -444,13 +446,13 @@ async def get_bioassay_results(
         Dict[str, Any]: Raw PubChem API response with bioassay results and activity data
     """
     endpoint = f"/compound/cid/{cid}/assaysummary/JSON"
-    response = await pubchem_client.get(endpoint, params={"outcome": activity_outcome})
+    response = pubchem_client.get(endpoint, params={"outcome": activity_outcome})
     response["Table"]["Row"] = response["Table"]["Row"][:max_records]
     return response
 
 
 @tool_cache(cache_name)
-async def get_bioassay_info(aid: int) -> Dict[str, Any]:
+def get_bioassay_info(aid: int) -> Dict[str, Any]:
     """Get detailed information for a specific bioassay by AID.
 
     Args:
@@ -459,7 +461,7 @@ async def get_bioassay_info(aid: int) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Raw PubChem API response with detailed bioassay information
     """
-    response = await pubchem_client.get(f"/assay/aid/{aid}/description/JSON")
+    response = pubchem_client.get(f"/assay/aid/{aid}/description/JSON")
     return response
 
 
@@ -467,7 +469,7 @@ async def get_bioassay_info(aid: int) -> Dict[str, Any]:
 
 
 @tool_cache(cache_name)
-async def get_safety_data(cid: Union[int, str]) -> Dict[str, Any]:
+def get_safety_data(cid: Union[int, str]) -> Dict[str, Any]:
     """Get GHS pictograms, signal word, hazard/precaution codes, etc.
 
     Args:
@@ -477,14 +479,12 @@ async def get_safety_data(cid: Union[int, str]) -> Dict[str, Any]:
         Dict[str, Any]: Raw PubChem API response with GHS safety classification data
     """
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON"
-    response = await pubchem_client.client.get(
-        url, params={"heading": "GHS Classification"}
-    )
+    response = pubchem_client.client.get(url, params={"heading": "GHS Classification"})
     return response.json()
 
 
 @tool_cache(cache_name)
-async def get_toxicity_data(cid: Union[int, str]) -> Dict[str, Any]:
+def get_toxicity_data(cid: Union[int, str]) -> Dict[str, Any]:
     """Get toxicity information for the compound.
 
     Args:
@@ -494,12 +494,12 @@ async def get_toxicity_data(cid: Union[int, str]) -> Dict[str, Any]:
         Dict[str, Any]: Raw PubChem API response with toxicity information
     """
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON"
-    response = await pubchem_client.client.get(url, params={"heading": "Toxicity"})
+    response = pubchem_client.client.get(url, params={"heading": "Toxicity"})
     return response.json()
 
 
 @tool_cache(cache_name)
-async def get_drug_medication_data(cid: Union[int, str]) -> Dict[str, Any]:
+def get_drug_medication_data(cid: Union[int, str]) -> Dict[str, Any]:
     """Get drug medication data for the compound.
 
     Args:
@@ -509,14 +509,14 @@ async def get_drug_medication_data(cid: Union[int, str]) -> Dict[str, Any]:
         Dict[str, Any]: Raw PubChem API response with drug and medication information
     """
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON"
-    response = await pubchem_client.client.get(
+    response = pubchem_client.client.get(
         url, params={"heading": "Drug and Medication Information"}
     )
     return response.json()
 
 
 @tool_cache(cache_name)
-async def get_pharmocology_biochemistry_data(cid: Union[int, str]) -> Dict[str, Any]:
+def get_pharmocology_biochemistry_data(cid: Union[int, str]) -> Dict[str, Any]:
     """Get pharmacology and biochemistry data for the compound.
 
     Args:
@@ -526,7 +526,7 @@ async def get_pharmocology_biochemistry_data(cid: Union[int, str]) -> Dict[str, 
         Dict[str, Any]: Raw PubChem API response with pharmacology and biochemistry information
     """
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON"
-    response = await pubchem_client.client.get(
+    response = pubchem_client.client.get(
         url, params={"heading": "Pharmacology and Biochemistry"}
     )
     return response.json()
@@ -534,17 +534,99 @@ async def get_pharmocology_biochemistry_data(cid: Union[int, str]) -> Dict[str, 
 
 # ============================ Function List ============================
 
-PUBCHEM_TOOLS = [search_pubchem_cid]
+PUBCHEM_TOOLS = [
+    search_pubchem_cid,
+    get_compound_info,
+    search_by_smiles,
+    search_by_inchi,
+    search_by_cas_number,
+    get_compound_synonyms,
+    search_similar_compounds,
+    substructure_search,
+    superstructure_search,
+    get_3d_conformers,
+    analyze_stereochemistry,
+    get_compound_properties,
+    get_pharmacophore_features,
+    get_bioassay_results,
+    get_bioassay_info,
+    get_safety_data,
+    get_toxicity_data,
+    get_drug_medication_data,
+    get_pharmocology_biochemistry_data,
+]
 
 for tool in PUBCHEM_TOOLS:
-    tool.__name__ = "CHEMBL__" + tool.__name__
+    tool.__name__ = "PUBCHEM__" + tool.__name__
 
 if __name__ == "__main__":
     import dotenv
-    import asyncio
 
     dotenv.load_dotenv("../../../.env")
 
-    # Example usage of the PubChem tools
+    # Test search_pubchem_cid
+    print("Testing search_pubchem_cid:")
     result = search_pubchem_cid("Aspirin", limit=5)
     print(result)
+
+    # Test get_compound_info
+    print("\nTesting get_compound_info:")
+    result = get_compound_info(2244)  # Aspirin CID
+    print(result)
+
+    # Test search_by_smiles
+    print("\nTesting search_by_smiles:")
+    result = search_by_smiles("CC(=O)OC1=CC=CC=C1C(=O)O")  # Aspirin SMILES
+    print(result)
+
+    # Test search_by_inchi
+    print("\nTesting search_by_inchi:")
+    result = search_by_inchi(
+        "InChI=1S/C9H8O4/c1-6(10)13-8-5-3-2-4-7(8)9(11)12/h2-5H,1H3,(H,11,12)"
+    )  # Aspirin InChI
+    print(result)
+
+    # Test search_by_cas_number
+    print("\nTesting search_by_cas_number:")
+    result = search_by_cas_number("50-78-2")  # Aspirin CAS
+    print(result)
+
+    # Test get_compound_synonyms
+    print("\nTesting get_compound_synonyms:")
+    result = get_compound_synonyms(2244)
+    print(result)
+
+    # Test get_compound_properties
+    print("\nTesting get_compound_properties:")
+    result = get_compound_properties(2244)
+    print(result)
+
+    # Test get_bioassay_results
+    print("\nTesting get_bioassay_results:")
+    result = get_bioassay_results(2244, max_records=5)
+    print(result)
+
+    # Test get_safety_data
+    print("\nTesting get_safety_data:")
+    result = get_safety_data(2244)
+    print(result)
+
+    # Test get_toxicity_data
+    print("\nTesting get_toxicity_data:")
+    result = get_toxicity_data(2244)
+    print(result)
+
+    # Test get_drug_medication_data
+    print("\nTesting get_drug_medication_data:")
+    result = get_drug_medication_data(2244)
+    print(result)
+
+    # Test get_pharmocology_biochemistry_data
+    print("\nTesting get_pharmocology_biochemistry_data:")
+    result = get_pharmocology_biochemistry_data(2244)
+    print(result)
+
+    # Note: Some functions like search_similar_compounds, substructure_search, etc. may take longer or require specific inputs
+    print(
+        "\nOther functions (search_similar_compounds, substructure_search, etc.) are available but not tested here for brevity."
+    )
