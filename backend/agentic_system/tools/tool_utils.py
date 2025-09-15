@@ -7,24 +7,28 @@ import diskcache
 from functools import wraps
 
 
-def tool_cache(name: str):
+def tool_cache(name: str, enabled: bool = False):
     """
     Decorator to cache function results using diskcache.
     Creates a cache directory at /tmp/{name}_cache.
 
     Args:
         name (str): Name for the cache (e.g., "chembl", "pubchem")
+        enabled (bool): Whether to enable caching. Defaults to False.
 
     Returns:
-        Decorated function with caching enabled
+        Decorated function with caching enabled if enabled=True, otherwise the original function
 
     Usage:
-        @tool_cache("chembl")
+        @tool_cache("chembl", enabled=True)
         def my_function(arg1, arg2):
             return expensive_operation(arg1, arg2)
     """
 
     def decorator(func):
+        if not enabled:
+            return func
+
         cache = diskcache.Cache(f"/tmp/{name}_cache")
 
         @wraps(func)
