@@ -17,8 +17,6 @@ class EfficacyAssessment(dspy.Signature):
     - Efficacy metric (0-1): predicted_efficacy = mean (P_nonfailing(cell_i | treated well)).
       • 0 -> all cells appear activated (model assigns ~0 to treated cells).
       • 1 -> all cells appear fully reverted (model assigns ~1 to treated cells).
-
-    Always perform a search for existing preclinical data on the compound in a cardiac fibrosis context and give that evidence the highest priority when predicting efficacy and confidence.
     """
 
     compound_name: str = dspy.InputField(
@@ -33,7 +31,7 @@ class EfficacyAssessment(dspy.Signature):
 
 
 class CFEfficacyAgent(dspy.Module):
-    def __init__(self, max_iters=5):
+    def __init__(self, max_iters=10):
         super().__init__()
 
         tools = CHEMBL_TOOLS + PUBCHEM_TOOLS  # + SEARCH_TOOLS

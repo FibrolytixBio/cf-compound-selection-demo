@@ -3,7 +3,7 @@ import pandas as pd
 import litellm
 from openai import OpenAI
 
-LITL_DATA_PATH = "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/agentic_system/tools/litl_data.csv"
+LITL_DATA_PATH = "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/agentic_system/litl_data/litl_data.csv"
 
 
 class LITLPCRReasoningRequest(BaseModel):
