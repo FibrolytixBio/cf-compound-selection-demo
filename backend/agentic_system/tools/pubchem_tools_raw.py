@@ -8,8 +8,11 @@ import urllib.parse
 import time
 
 import httpx
-from agentic_system.tools.tool_utils import FileBasedRateLimiter
-from agentic_system.tools.tool_utils import tool_cache
+from agentic_system.tools.tool_utils import (
+    FileBasedRateLimiter,
+    tool_cache,
+    ai_summarized_output,
+)
 
 
 # PubChem API client configuration
@@ -471,8 +474,10 @@ PUBCHEM_TOOLS = [
     get_pharmocology_biochemistry_data,
 ]
 
-for tool in PUBCHEM_TOOLS:
-    tool.__name__ = "PUBCHEM__" + tool.__name__
+for i, fn in enumerate(PUBCHEM_TOOLS):
+    wrapped = ai_summarized_output(fn)
+    wrapped.__name__ = "PUBCHEM__" + wrapped.__name__  # optional
+    PUBCHEM_TOOLS[i] = wrapped  # <-- actually replace the list entry
 
 if __name__ == "__main__":
     import dotenv

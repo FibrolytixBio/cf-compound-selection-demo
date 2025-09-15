@@ -5,8 +5,11 @@ ChEMBL Standalone Tools - Synchronous functions with natural language outputs
 
 from typing import Dict, Any
 import httpx
-from agentic_system.tools.tool_utils import FileBasedRateLimiter
-from agentic_system.tools.tool_utils import tool_cache
+from agentic_system.tools.tool_utils import (
+    FileBasedRateLimiter,
+    tool_cache,
+    ai_summarized_output,
+)
 
 
 # ChEMBL API client configuration
@@ -95,7 +98,7 @@ def get_compound_bioactivities(
     max_results: int = 10,
     activity_type: str = None,
     max_activity_value: float = None,
-) -> Dict[str, Any]:
+) -> str:
     """Retrieve all reported bioactivities for a given ChEMBL compound.
 
     Args:
@@ -103,9 +106,10 @@ def get_compound_bioactivities(
         max_results (int, optional): Maximum number of results to return (1–1000). Defaults to 10.
         activity_type (str, optional): Standard activity type to filter by (e.g., IC50, Ki). Defaults to None.
         max_activity_value (float, optional): Maximum allowed activity value (e.g., IC50 < X nM). Defaults to None.
+        goal (str, optional): The goal for summarization, defaults to decorator's goal.
 
     Returns:
-        Dict[str, Any]: Raw ChEMBL API response with bioactivity data
+        str: AI-summarized summary of bioactivity data, formatted for use by larger models
     """
     params = {
         "molecule_chembl_id": chembl_id,
@@ -341,8 +345,10 @@ CHEMBL_TOOLS = [
     get_active_compounds,
 ]
 
-for tool in CHEMBL_TOOLS:
-    tool.__name__ = "CHEMBL__" + tool.__name__
+for i, fn in enumerate(CHEMBL_TOOLS):
+    wrapped = ai_summarized_output(fn)
+    wrapped.__name__ = "CHEMBL__" + wrapped.__name__  # optional
+    CHEMBL_TOOLS[i] = wrapped  # <-- actually replace the list entry
 
 
 if __name__ == "__main__":
@@ -352,4 +358,6 @@ if __name__ == "__main__":
 
     # test get_active_compounds
     result = get_active_compounds("CHEMBL4303", activity_type="IC50", max_results=5)
-    print(result)
+
+    # print(get_compound_bioactivities("CHEMBL252164", max_results=5))
+    print(CHEMBL_TOOLS[1]("CHEMBL252164", max_results=5))

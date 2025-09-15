@@ -5,6 +5,45 @@ import asyncio
 from pathlib import Path
 import diskcache
 from functools import wraps
+import inspect
+
+import dspy
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
+
+
+# DSPy signature for summarizing data
+class SummarizeData(dspy.Signature):
+    """Summarize raw API data into useful tokens for an agent that is determining the efficacy of compounds for reversing cardiac fibrosis.
+    Cite referenceable information like IDs, URLs, and other relevant metadata.
+    If there is no useful information, return "No relevant information found."
+    """
+
+    data: str = dspy.InputField(desc="The raw data from the tool API")
+    summary: str = dspy.OutputField(
+        desc="A concise, structured summary of key information formatted for use by larger AI models"
+    )
+
+
+def ai_summarized_output(func):
+    """Decorator that calls the original function and summarizes its output using Gemini Flash Lite."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Call the original function
+        result = str(func(*args, **kwargs))
+
+        # Configure DSPy with Gemini Flash Lite
+        lm = dspy.LM("gemini/gemini-2.5-flash-lite", temperature=0.0, cache=True)
+
+        # Use DSPy to summarize
+        with dspy.context(lm=lm):
+            predict = dspy.Predict(SummarizeData)
+            summary_result = predict(data=result)
+            return summary_result.summary
+
+    return wrapper
 
 
 def tool_cache(name: str, enabled: bool = False):
