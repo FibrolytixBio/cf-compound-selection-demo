@@ -38,7 +38,7 @@ class CFEfficacyAgent(dspy.Module):
     def __init__(self, max_iters=5):
         super().__init__()
 
-        tools = SEARCH_TOOLS + CHEMBL_TOOLS + PUBCHEM_TOOLS
+        tools = CHEMBL_TOOLS + PUBCHEM_TOOLS  # + SEARCH_TOOLS
 
         self.agent = dspy.ReAct(
             EfficacyAssessment,

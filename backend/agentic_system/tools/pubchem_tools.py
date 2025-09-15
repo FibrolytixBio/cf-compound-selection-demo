@@ -581,6 +581,9 @@ PUBCHEM_TOOLS = [
     find_similar_compounds,
 ]
 
+for tool in PUBCHEM_TOOLS:
+    tool.__name__ = "PUBCHEM__" + tool.__name__
+
 
 if __name__ == "__main__":
     import threading

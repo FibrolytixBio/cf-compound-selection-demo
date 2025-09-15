@@ -543,6 +543,9 @@ CHEMBL_TOOLS = [
     get_target_activities_summary,
 ]
 
+for tool in CHEMBL_TOOLS:
+    tool.__name__ = "CHEMBL__" + tool.__name__
+
 
 if __name__ == "__main__":
     import dotenv
