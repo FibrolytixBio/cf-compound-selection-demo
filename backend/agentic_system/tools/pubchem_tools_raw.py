@@ -126,88 +126,6 @@ def get_compound_info(cid: Union[int, str], format: str = "json") -> Dict[str, A
 
 
 @tool_cache(cache_name)
-def search_by_smiles(smiles: str) -> Dict[str, Any]:
-    """Search for compounds by SMILES string (exact match).
-
-    Args:
-        smiles (str): SMILES string of the query molecule
-
-    Returns:
-        Dict[str, Any]: Search results with query SMILES, found CID, and compound details
-    """
-    endpoint = f"/compound/smiles/{urllib.parse.quote(smiles)}/cids/JSON"
-    response = pubchem_client.get(endpoint)
-
-    cids = response.get("IdentifierList", {}).get("CID", [])
-    if not cids:
-        return {"error": f"No compounds found for SMILES: {smiles}"}
-
-    cid = cids[0]
-    details_endpoint = f"/compound/cid/{cid}/property/MolecularFormula,MolecularWeight,CanonicalSMILES,IUPACName/JSON"
-    details_response = pubchem_client.get(details_endpoint)
-
-    return {
-        "query_smiles": smiles,
-        "found_cid": cid,
-        "details": details_response,
-    }
-
-
-@tool_cache(cache_name)
-def search_by_inchi(inchi: str) -> Dict[str, Any]:
-    """Search for compounds by InChI or InChI key.
-
-    Args:
-        inchi (str): InChI string or InChI key
-
-    Returns:
-        Dict[str, Any]: Search results with query InChI, found CID, and compound details
-    """
-    if inchi.startswith("InChI="):
-        endpoint = f"/compound/inchi/{urllib.parse.quote(inchi)}/cids/JSON"
-    else:
-        endpoint = f"/compound/inchikey/{urllib.parse.quote(inchi)}/cids/JSON"
-
-    res = pubchem_client.get(endpoint)
-    cids = res.get("IdentifierList", {}).get("CID", [])
-    if not cids:
-        return {"error": f"No compounds found for InChI: {inchi}"}
-
-    cid = cids[0]
-    details_ep = (
-        f"/compound/cid/{cid}/property/"
-        "MolecularFormula,MolecularWeight,CanonicalSMILES,IUPACName/JSON"
-    )
-    details = pubchem_client.get(details_ep)
-    return {"query_inchi": inchi, "found_cid": cid, "details": details}
-
-
-@tool_cache(cache_name)
-def search_by_cas_number(cas_number: str) -> Dict[str, Any]:
-    """Search for compounds by CAS Registry Number.
-
-    Args:
-        cas_number (str): CAS Registry Number (e.g., 50-78-2)
-
-    Returns:
-        Dict[str, Any]: Search results with CAS number, found CID, and compound details
-    """
-    endpoint = f"/compound/name/{urllib.parse.quote(cas_number)}/cids/JSON"
-    res = pubchem_client.get(endpoint)
-    cids = res.get("IdentifierList", {}).get("CID", [])
-    if not cids:
-        return {"error": f"No compounds found for CAS number: {cas_number}"}
-
-    cid = cids[0]
-    details_ep = (
-        f"/compound/cid/{cid}/property/"
-        "MolecularFormula,MolecularWeight,CanonicalSMILES,IUPACName/JSON"
-    )
-    details = pubchem_client.get(details_ep)
-    return {"cas_number": cas_number, "found_cid": cid, "details": details}
-
-
-@tool_cache(cache_name)
 def get_compound_synonyms(cid: Union[int, str]) -> Dict[str, Any]:
     """Get all names and synonyms for a compound.
 
@@ -537,9 +455,6 @@ def get_pharmocology_biochemistry_data(cid: Union[int, str]) -> Dict[str, Any]:
 PUBCHEM_TOOLS = [
     search_pubchem_cid,
     get_compound_info,
-    search_by_smiles,
-    search_by_inchi,
-    search_by_cas_number,
     get_compound_synonyms,
     search_similar_compounds,
     substructure_search,
@@ -572,23 +487,6 @@ if __name__ == "__main__":
     # Test get_compound_info
     print("\nTesting get_compound_info:")
     result = get_compound_info(2244)  # Aspirin CID
-    print(result)
-
-    # Test search_by_smiles
-    print("\nTesting search_by_smiles:")
-    result = search_by_smiles("CC(=O)OC1=CC=CC=C1C(=O)O")  # Aspirin SMILES
-    print(result)
-
-    # Test search_by_inchi
-    print("\nTesting search_by_inchi:")
-    result = search_by_inchi(
-        "InChI=1S/C9H8O4/c1-6(10)13-8-5-3-2-4-7(8)9(11)12/h2-5H,1H3,(H,11,12)"
-    )  # Aspirin InChI
-    print(result)
-
-    # Test search_by_cas_number
-    print("\nTesting search_by_cas_number:")
-    result = search_by_cas_number("50-78-2")  # Aspirin CAS
     print(result)
 
     # Test get_compound_synonyms
