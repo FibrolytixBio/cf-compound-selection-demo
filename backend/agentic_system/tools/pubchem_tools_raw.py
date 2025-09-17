@@ -476,8 +476,8 @@ PUBCHEM_TOOLS = [
 
 for i, fn in enumerate(PUBCHEM_TOOLS):
     wrapped = ai_summarized_output(fn)
-    wrapped.__name__ = "PUBCHEM__" + wrapped.__name__  # optional
-    PUBCHEM_TOOLS[i] = wrapped  # <-- actually replace the list entry
+    wrapped.__name__ = "PUBCHEM__" + wrapped.__name__
+    PUBCHEM_TOOLS[i] = wrapped
 
 if __name__ == "__main__":
     import dotenv

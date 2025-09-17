@@ -11,12 +11,12 @@ from ..tools.search_tools import SEARCH_TOOLS
 
 class EfficacyAssessment(dspy.Signature):
     """
-    Estimate the efficacy of a compound at reversing the activated cardiac fibroblast phenotype using a Cell Painting + ML readout, as measured by a custom in vitro assay.
-    - Assay: 10 µM compound (in DMSO) is applied to primary human ventricular fibroblasts in 96-well plates for 72 h alongside a DMSO-only control.
-    - Readout: multiplexed Cell Painting imaging is performed; single-cell morphology features are extracted and scored by a validated classifier that distinguishes “failing/activated” vs “nonfailing/quiescent-like” fibroblasts.
+    Estimate the efficacy of a compound for reversing the failing cardiac fibroblast phenotype using a Cell Painting + ML readout, as measured by a custom in vitro assay.
+    - Assay: 10 µM compound (in DMSO) is applied to failing primary human ventricular fibroblasts in 96-well plates for 72 h alongside a DMSO-only control.
+    - Readout: multiplexed Cell Painting imaging is performed; single-cell morphology features are extracted and scored by a validated classifier that distinguishes “failing” vs “nonfailing” fibroblasts.
     - Efficacy metric (0-1): predicted_efficacy = mean (P_nonfailing(cell_i | treated well)).
-      • 0 -> all cells appear activated (model assigns ~0 to treated cells).
-      • 1 -> all cells appear fully reverted (model assigns ~1 to treated cells).
+      • 0 -> all cells appear failing (model assigns ~0 to treated cells).
+      • 1 -> all cells appear fully reverted to nonfailing (model assigns ~1 to treated cells).
     """
 
     compound_name: str = dspy.InputField(
@@ -34,7 +34,7 @@ class CFEfficacyAgent(dspy.Module):
     def __init__(self, max_iters=10):
         super().__init__()
 
-        tools = SEARCH_TOOLS  # + CHEMBL_TOOLS + PUBCHEM_TOOLS
+        tools = SEARCH_TOOLS + CHEMBL_TOOLS + PUBCHEM_TOOLS
 
         self.agent = dspy.ReAct(
             EfficacyAssessment,
