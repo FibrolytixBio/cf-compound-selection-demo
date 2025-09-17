@@ -27,12 +27,51 @@ class SummarizeData(dspy.Signature):
 
 
 def ai_summarized_output(func):
-    """Decorator that calls the original function and summarizes its output using Gemini Flash Lite."""
+    """Decorator that calls the original function and summarizes its output using Gemini Flash Lite, adding a 'goal' parameter."""
+
+    # Check if already decorated
+    if hasattr(func, "goal_info"):
+        return func
+
+    goal_desc = "Concisely stated desired information to obtain with this tool call"
+
+    # Update docstring
+    new_doc = func.__doc__
+    if new_doc:
+        lines = new_doc.split("\n")
+        new_lines = []
+        in_args = False
+        for line in lines:
+            new_lines.append(line)
+            if line.strip().startswith("Args:"):
+                in_args = True
+                new_lines.append(f"        goal (str): {goal_desc}")
+            elif in_args and line.strip() == "":
+                in_args = False
+        new_doc = "\n".join(new_lines)
+    else:
+        new_doc = f"Args:\n        goal (str): {goal_desc}"
+
+    # Update signature
+    sig = inspect.signature(func)
+    goal_param = inspect.Parameter(
+        "goal", inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=str
+    )
+    new_params = [goal_param] + list(sig.parameters.values())
+    new_sig = sig.replace(parameters=new_params)
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        # Call the original function
-        result = str(func(*args, **kwargs))
+        # Bind arguments to the new signature
+        bound = new_sig.bind(*args, **kwargs)
+        bound.apply_defaults()
+        goal = bound.arguments["goal"]  # goal parameter for future use in summarization
+
+        # Prepare arguments for the original function
+        original_kwargs = bound.arguments.copy()
+        del original_kwargs["goal"]
+
+        result = str(func(**original_kwargs))
 
         # Configure DSPy with Gemini Flash Lite
         lm = dspy.LM("gemini/gemini-2.5-flash-lite", temperature=0.0, cache=True)
@@ -43,6 +82,9 @@ def ai_summarized_output(func):
             summary_result = predict(data=result)
             return summary_result.summary
 
+    wrapper.__signature__ = new_sig
+    wrapper.__doc__ = new_doc
+    wrapper.goal_info = goal_desc
     return wrapper
 
 
