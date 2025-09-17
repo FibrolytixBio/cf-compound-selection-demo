@@ -26,7 +26,6 @@ tavily_cache_name = "tavily"
 
 
 @tool_cache(tavily_cache_name)
-@ai_summarized_output
 def search_web(query: str, max_results: int = 5) -> str:
     """Search the web for information on a given query.
 
@@ -73,7 +72,6 @@ def search_web(query: str, max_results: int = 5) -> str:
 
 
 @tool_cache(tavily_cache_name)
-@ai_summarized_output
 def extract_web(urls: list[str]) -> str:
     """Extract raw content from a list of URLs.
 

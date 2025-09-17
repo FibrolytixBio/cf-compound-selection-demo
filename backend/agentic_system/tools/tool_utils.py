@@ -12,6 +12,10 @@ import warnings
 
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
+# ============================= AI Tool Summarizer ==============================
+
+summarizer_lm = dspy.LM("gemini/gemini-2.5-flash-lite", temperature=0.0, cache=True)
+
 
 # DSPy signature for summarizing data
 class SummarizeData(dspy.Signature):
@@ -20,9 +24,12 @@ class SummarizeData(dspy.Signature):
     If there is no useful information, return "No relevant information found."
     """
 
-    data: str = dspy.InputField(desc="The raw data from the tool API")
+    goal: str = dspy.InputField(
+        desc="The desired information to obtain with this tool call"
+    )
+    data: str = dspy.InputField(desc="The raw data from the tool call")
     summary: str = dspy.OutputField(
-        desc="A concise, structured summary of key information formatted for use by larger AI models"
+        desc="A concise, structured summary of key information formatted for use by ReAct agent LLM"
     )
 
 
@@ -33,7 +40,7 @@ def ai_summarized_output(func):
     if hasattr(func, "goal_info"):
         return func
 
-    goal_desc = "Concisely stated desired information to obtain with this tool call"
+    goal_desc = "Concisely state the specific desired information to obtain with this tool call."
 
     # Update docstring
     new_doc = func.__doc__
@@ -73,19 +80,19 @@ def ai_summarized_output(func):
 
         result = str(func(**original_kwargs))
 
-        # Configure DSPy with Gemini Flash Lite
-        lm = dspy.LM("gemini/gemini-2.5-flash-lite", temperature=0.0, cache=True)
-
         # Use DSPy to summarize
-        with dspy.context(lm=lm):
+        with dspy.context(lm=summarizer_lm):
             predict = dspy.Predict(SummarizeData)
-            summary_result = predict(data=result)
+            summary_result = predict(goal=goal, data=result)
             return summary_result.summary
 
     wrapper.__signature__ = new_sig
     wrapper.__doc__ = new_doc
     wrapper.goal_info = goal_desc
     return wrapper
+
+
+# ============================ Caching and Rate Limiting =============================
 
 
 def tool_cache(name: str, enabled: bool = False):
