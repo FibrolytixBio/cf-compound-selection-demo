@@ -205,7 +205,7 @@ def _format_pubmed_abstracts(raw_text: str) -> str:
     return "\n\n".join(text_blocks)
 
 
-SEARCH_TOOLS = [search_web, extract_web]  # , search_pubmed_abstracts]
+SEARCH_TOOLS = [search_web, extract_web, search_pubmed_abstracts]
 
 for i, fn in enumerate(SEARCH_TOOLS):
     wrapped = ai_summarized_output(fn)

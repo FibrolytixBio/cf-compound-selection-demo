@@ -20,9 +20,10 @@ summarizer_lm = dspy.LM("gemini/gemini-2.5-flash-lite", temperature=0.0, cache=T
 # DSPy signature for summarizing data
 class SummarizeData(dspy.Signature):
     """Summarize raw API data into useful tokens for an agent.
-    Use parenthetical citations with external sources like full URLs, PMIDs, etc.
-    Only return information from the API data that you can cite.
-    Do not think and add information.
+    For each distinct piece of information, provide a concise statement followed by a parenthetical citation to the specific source (full URL, PMID, assay ID, etc.) from the API data.
+    Do not combine information from multiple sources in a single statement.
+    Only include information directly supported by the data.
+    Do not add external knowledge or inferences.
     If there is no useful information, return "No relevant information found."
     """
 
