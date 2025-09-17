@@ -475,7 +475,7 @@ PUBCHEM_TOOLS = [
 ]
 
 for i, fn in enumerate(PUBCHEM_TOOLS):
-    wrapped = fn  # ai_summarized_output(fn)
+    wrapped = ai_summarized_output(fn)
     wrapped.__name__ = "PUBCHEM__" + wrapped.__name__
     PUBCHEM_TOOLS[i] = wrapped
 

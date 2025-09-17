@@ -208,7 +208,7 @@ def _format_pubmed_abstracts(raw_text: str) -> str:
 SEARCH_TOOLS = [search_web, extract_web, search_pubmed_abstracts]
 
 for i, fn in enumerate(SEARCH_TOOLS):
-    wrapped = fn  # ai_summarized_output(fn)
+    wrapped = ai_summarized_output(fn)
     wrapped.__name__ = "SEARCH__" + wrapped.__name__
     SEARCH_TOOLS[i] = wrapped
 

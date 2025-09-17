@@ -346,7 +346,7 @@ CHEMBL_TOOLS = [
 ]
 
 for i, fn in enumerate(CHEMBL_TOOLS):
-    wrapped = fn  # ai_summarized_output(fn)
+    wrapped = ai_summarized_output(fn)
     wrapped.__name__ = "CHEMBL__" + wrapped.__name__
     CHEMBL_TOOLS[i] = wrapped
 
