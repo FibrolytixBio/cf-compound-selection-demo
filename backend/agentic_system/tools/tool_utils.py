@@ -14,7 +14,9 @@ warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 # ============================= AI Tool Summarizer ==============================
 
-summarizer_lm = dspy.LM("gemini/gemini-2.5-flash-lite", temperature=0.0, cache=True)
+summarizer_lm = dspy.LM(
+    "gemini/gemini-2.5-flash-lite", temperature=0.0, cache=True, max_tokens=10000
+)
 
 
 # DSPy signature for summarizing data
