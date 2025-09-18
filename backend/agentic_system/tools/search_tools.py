@@ -10,7 +10,11 @@ from tavily import TavilyClient
 from pubmedclient.models import Db, EFetchRequest, ESearchRequest
 from pubmedclient.sdk import efetch, esearch, pubmedclient_client
 
-from agentic_system.tools.tool_utils import FileBasedRateLimiter, tool_cache
+from agentic_system.tools.tool_utils import (
+    FileBasedRateLimiter,
+    tool_cache,
+    ai_summarized_output,
+)
 
 
 # ============================= Web Search =============================
@@ -202,6 +206,11 @@ def _format_pubmed_abstracts(raw_text: str) -> str:
 
 
 SEARCH_TOOLS = [search_web, extract_web, search_pubmed_abstracts]
+
+for i, fn in enumerate(SEARCH_TOOLS):
+    wrapped = ai_summarized_output(fn)
+    wrapped.__name__ = "SEARCH__" + wrapped.__name__
+    SEARCH_TOOLS[i] = wrapped
 
 if __name__ == "__main__":
     import dotenv

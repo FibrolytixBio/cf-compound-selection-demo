@@ -7,7 +7,7 @@
 # Backend files
 backend/.env
 *.venv/
-backend/agentic_system/tools/litl_data.csv
+backend/agentic_system/litl_data/litl_data.csv
 # MLflow files
 */mlartifacts/
 *mydb.sqlite
