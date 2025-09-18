@@ -100,7 +100,7 @@ def ai_summarized_output(func):
 # ============================ Caching and Rate Limiting =============================
 
 
-def tool_cache(name: str, enabled: bool = False):
+def tool_cache(name: str, enabled: bool = True):
     """
     Decorator to cache function results using diskcache.
     Creates a cache directory at /tmp/{name}_cache.
