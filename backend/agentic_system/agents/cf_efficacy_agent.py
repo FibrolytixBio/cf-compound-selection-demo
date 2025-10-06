@@ -7,6 +7,7 @@ import dspy
 from ..tools.chembl_tools import CHEMBL_TOOLS
 from ..tools.pubchem_tools import PUBCHEM_TOOLS
 from ..tools.search_tools import SEARCH_TOOLS
+from ..tools.litl_tools_new import LITL_TOOLS
 
 
 class EfficacyAssessment(dspy.Signature):
@@ -17,6 +18,13 @@ class EfficacyAssessment(dspy.Signature):
     - Efficacy metric (0-1): predicted_efficacy = mean (P_nonfailing(cell_i | treated well)).
       • 0 -> all cells appear failing (model assigns ~0 to treated cells).
       • 1 -> all cells appear fully reverted to nonfailing (model assigns ~1 to treated cells).
+
+    Tool information priority is as follows:
+    1) LITL information. This is based on previous data on other compounds from the exact same assay.
+    2) Literature information for this compound. Especially if it is a preclinical context.
+    3) Other information
+
+    Always use for literature and LITL tools to inform your answer. Use whatever other tools may be helpful. Keep using tools when possible to get more information and make your answer more accurate.
     """
 
     compound_name: str = dspy.InputField(
@@ -34,7 +42,7 @@ class CFEfficacyAgent(dspy.Module):
     def __init__(self, max_iters=10):
         super().__init__()
 
-        tools = SEARCH_TOOLS + CHEMBL_TOOLS + PUBCHEM_TOOLS
+        tools = SEARCH_TOOLS + CHEMBL_TOOLS + PUBCHEM_TOOLS + LITL_TOOLS
 
         self.agent = dspy.ReAct(
             EfficacyAssessment,
