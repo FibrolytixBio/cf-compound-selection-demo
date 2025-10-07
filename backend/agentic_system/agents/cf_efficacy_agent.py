@@ -25,9 +25,11 @@ class EfficacyAssessment(dspy.Signature):
     3) Other information
 
     Always start with the `LITL__efficacy_reasoning` so you know if LITL data will be useful for this prediction.
-    Always use literature and LITL tools to inform your answer.
-    Use whatever other tools may be helpful.
+    Always use additional LITL and literature tools to inform your answer.
+    Use whatever other tools are helpful.
     Keep using tools when possible to get more information and make your answer more accurate.
+
+    **Complete at least 15 steps of thought/observation/tool call cycles.**
     """
 
     compound_name: str = dspy.InputField(
@@ -42,7 +44,7 @@ class EfficacyAssessment(dspy.Signature):
 
 
 class CFEfficacyAgent(dspy.Module):
-    def __init__(self, max_iters=10):
+    def __init__(self, max_iters=30):
         super().__init__()
 
         tools = SEARCH_TOOLS + CHEMBL_TOOLS + PUBCHEM_TOOLS + LITL_TOOLS

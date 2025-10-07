@@ -128,7 +128,7 @@ def LITL__rag_query(query, compound_to_exclude):
         doc for doc in docs if compound_to_exclude.lower() not in doc.lower()
     ]
 
-    NUM_DOCS = 3
+    NUM_DOCS = 5
     embedder = dspy.Embedder(
         "gemini/text-embedding-004", dimensions=768, batch_size=100
     )

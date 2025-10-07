@@ -14,10 +14,10 @@ mlflow.autolog()
 mlflow.tracing.disable_notebook_display()
 
 load_dotenv("../.env")
-lm = dspy.LM("gemini/gemini-2.5-pro", temperature=0.9, cache=False, max_tokens=25000)
+lm = dspy.LM("gemini/gemini-2.5-pro", temperature=0.9, cache=False, max_tokens=50000)
 dspy.settings.configure(lm=lm, track_usage=True)
 
-COMPOUND = "PHA-665752"
+COMPOUND = "MK-2866"
 
 efficacy_agent = CFEfficacyAgent()
 efficacy_results = efficacy_agent(compound_name=COMPOUND)
