@@ -19,12 +19,13 @@ class EfficacyAssessment(dspy.Signature):
       • 0 -> all cells appear failing (model assigns ~0 to treated cells).
       • 1 -> all cells appear fully reverted to nonfailing (model assigns ~1 to treated cells).
 
-    Tool information priority is as follows:
-    1) Lab-in-the-loop (LITL) information. This is based on previous data on other compounds from the exact same assay.
-    2) Literature information for this compound. Especially if it is a preclinical context.
+    With some flexibility, tool information priority is as follows:
+    1) Literature information for this compound, especially in vivo evidence.
+    2) Lab-in-the-loop (LITL) information. This is based on previous data on other compounds from the exact same assay.
     3) Other information
 
     Always start with the `LITL__efficacy_reasoning` so you know if LITL data will be useful for this prediction.
+    Then, always use the `LITL__get_runs` tool for all compounds of interest to see how well the agent performed on these compounds.
     Always use additional LITL and literature tools to inform your answer.
     Use whatever other tools are helpful.
     Keep using tools when possible to get more information and make your answer more accurate.

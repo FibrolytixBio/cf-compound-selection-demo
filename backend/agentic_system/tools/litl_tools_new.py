@@ -13,6 +13,7 @@ with open(
     docs = pickle.load(f)
 
 
+# TODO: fix so we don't get compound being evaluated
 def LITL__get_all_compounds(compound_to_exclude):
     """Retrieve a dataframe of all compounds and their efficacy scores from past assay screening runs.
 
@@ -24,7 +25,9 @@ def LITL__get_all_compounds(compound_to_exclude):
     """
 
     efficacy_df = pd.read_csv(LITL_DATA_PATH)
-    efficacy_df = efficacy_df[efficacy_df.compound_name != compound_to_exclude]
+    efficacy_df = efficacy_df[
+        efficacy_df.compound_name.str.lower() != compound_to_exclude.lower()
+    ]
     # format the reference data for the model
     ref_rows = [
         f"{row.compound_name} | {row.cf_efficacy:.2f}"
@@ -32,11 +35,11 @@ def LITL__get_all_compounds(compound_to_exclude):
     ]
     efficacy_block = "\n".join(ref_rows)
 
-    return "Compound | Real Efficacy (0–1)\n" + efficacy_block
+    return "Compound | Real Efficacy (0-1)\n" + efficacy_block
 
 
 def LITL__efficacy_reasoning(compound: str) -> str:
-    """Get infeerence/comparison notes about screened compound efficacies for reversing cardiac fibrosis based on assay results.
+    """Get inference/comparison notes about screened compound efficacies for reversing cardiac fibrosis based on assay results.
 
     Args:
         compound (str): The name of the compound being evaluated for similar compounds.
@@ -45,7 +48,7 @@ def LITL__efficacy_reasoning(compound: str) -> str:
         str: A table with columns for Reference Compound, Efficacy Score (0-1), and Inference/Comparison Notes
     """
     efficacy_df = pd.read_csv(LITL_DATA_PATH)
-    efficacy_df = efficacy_df[efficacy_df.compound_name != compound]
+    efficacy_df = efficacy_df[efficacy_df.compound_name.str.lower() != compound.lower()]
     # format the reference data for the model
     ref_rows = [
         f"{row.compound_name} | {row.cf_efficacy:.2f}"
@@ -125,7 +128,7 @@ def LITL__rag_query(query, compound_to_exclude):
     """
 
     filtered_docs = [
-        doc for doc in docs if compound_to_exclude.lower() not in doc.lower()
+        doc for doc in docs if not compound_in_doc(compound_to_exclude, doc)
     ]
 
     NUM_DOCS = 5
@@ -163,12 +166,12 @@ def LITL__rag_query(query, compound_to_exclude):
         return memory_rag_result.summary
 
 
-def LITL__get_runs(compound, n_runs=1):
+def LITL__get_runs(compound_to_exclude, n_runs=1):
     """Retrieve past agent runs for a specific compound. Useful for understanding agent runs logic/accuracy for a compound.
     DO NOT USE FOR COMPOUND BEING EVALUATED. ONLY USE TO SEARCH FOR PAST RUNS OF OTHER COMPOUNDS.
 
     Args:
-        compound (str): The name of the compound to retrieve runs for.
+        compound_to_exclude (str): The name of the compound to retrieve runs for.
         n_runs (int, optional): The number of runs to retrieve. Defaults to 1.
 
     Returns:
@@ -177,10 +180,14 @@ def LITL__get_runs(compound, n_runs=1):
 
     compound_docs = []
     for doc in docs:
-        if compound.lower() in doc.lower():
+        if compound_in_doc(compound_to_exclude, doc):
             compound_docs.append(doc)
 
     return compound_docs[:n_runs]
+
+
+def compound_in_doc(compound, doc):
+    return f"## Compound\n{compound}".lower() in doc.lower()
 
 
 LITL_TOOLS = [
@@ -195,5 +202,6 @@ if __name__ == "__main__":
 
     dotenv.load_dotenv("../../../.env")
 
-    result = LITL__efficacy_reasoning("Tanespimycin")
+    # result = LITL__efficacy_reasoning("Tanespimycin")
+    result = LITL__efficacy_reasoning("finasteride")
     print(result)
