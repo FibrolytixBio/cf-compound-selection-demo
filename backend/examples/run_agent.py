@@ -20,7 +20,7 @@ lm = dspy.LM("gemini/gemini-2.5-pro", temperature=0.9, cache=False, max_tokens=8
 # )
 dspy.settings.configure(lm=lm, track_usage=True)
 
-COMPOUND = "Finasteride"
+COMPOUND = "Everolimus"
 
 efficacy_agent = CFEfficacyAgent()
 efficacy_results = efficacy_agent(compound_name=COMPOUND)
