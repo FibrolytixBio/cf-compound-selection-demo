@@ -7,7 +7,7 @@ import dspy
 from ..tools.chembl_tools import CHEMBL_TOOLS
 from ..tools.pubchem_tools import PUBCHEM_TOOLS
 from ..tools.search_tools import SEARCH_TOOLS
-from ..tools.litl_tools_new import LITL_TOOLS
+from ..tools.litl_tools import LITL_TOOLS
 
 
 class EfficacyAssessment(dspy.Signature):
