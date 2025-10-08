@@ -183,6 +183,9 @@ def LITL__get_runs(compound, n_runs=1):
         if compound_in_doc(compound, doc):
             compound_docs.append(doc)
 
+    if len(compound_docs) == 0:
+        return ["No past runs found for this compound."]
+
     return compound_docs[:n_runs]
 
 
@@ -203,5 +206,18 @@ if __name__ == "__main__":
     dotenv.load_dotenv("../../../.env")
 
     # result = LITL__efficacy_reasoning("Tanespimycin")
-    result = LITL__efficacy_reasoning("Tanespimycin")
-    print(result)
+    # print(result)
+
+    # result = LITL__get_runs("Anastrozole")
+    # print(result)
+
+    compounds = set()
+    for doc in docs:
+        start = doc.find("## Compound\n")
+        if start != -1:
+            compound = doc[start + len("## Compound\n") :].split("\n")[0].strip()
+            compounds.add(compound)
+    print("All compounds:")
+    print(len(sorted(compounds)))
+    for c in sorted(compounds):
+        print(c)

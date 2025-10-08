@@ -20,7 +20,7 @@ lm = dspy.LM(
 )
 dspy.settings.configure(lm=lm, track_usage=True)
 
-COMPOUND = "SU11274"
+COMPOUND = "Dutasteride"
 
 efficacy_agent = CFEfficacyAgent()
 efficacy_results = efficacy_agent(compound_name=COMPOUND)
