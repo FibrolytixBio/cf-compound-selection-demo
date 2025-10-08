@@ -166,12 +166,12 @@ def LITL__rag_query(query, compound_to_exclude):
         return memory_rag_result.summary
 
 
-def LITL__get_runs(compound, n_runs=1):
+def LITL__get_runs(reference_compound, n_runs=1):
     """Retrieve past agent runs for a specific compound. Useful for understanding agent runs logic/accuracy for a compound.
     DO NOT USE FOR COMPOUND BEING EVALUATED. ONLY USE TO SEARCH FOR PAST RUNS OF OTHER COMPOUNDS.
 
     Args:
-        compound (str): The name of the compound to retrieve runs for.
+        reference_compound (str): The name of the compound to retrieve runs for. CANNOT BE THE COMPOUND WE ARE PREDICTING EFFICACY FOR.
         n_runs (int, optional): The number of runs to retrieve. Defaults to 1.
 
     Returns:
@@ -180,7 +180,7 @@ def LITL__get_runs(compound, n_runs=1):
 
     compound_docs = []
     for doc in docs:
-        if compound_in_doc(compound, doc):
+        if compound_in_doc(reference_compound, doc):
             compound_docs.append(doc)
 
     if len(compound_docs) == 0:
