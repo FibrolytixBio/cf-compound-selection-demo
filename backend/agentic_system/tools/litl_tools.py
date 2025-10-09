@@ -5,7 +5,7 @@ import pandas as pd
 
 
 LITL_DATA_PATH = "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/agentic_system/litl_data/litl_data.csv"
-SUMMARIZED_TOOL_RUNS = "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/agentic_system/litl_data/summarized_tool_run_docs.pkl"
+SUMMARIZED_TOOL_RUNS = "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/agentic_system/litl_data/1__no_litl_run_reflections.pkl"
 
 with open(
     SUMMARIZED_TOOL_RUNS,

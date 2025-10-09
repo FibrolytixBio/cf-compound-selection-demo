@@ -22,7 +22,7 @@ dspy.settings.configure(lm=lm, track_usage=True)
 
 COMPOUND = "Everolimus"
 
-efficacy_agent = CFEfficacyAgent()
+efficacy_agent = CFEfficacyAgent(use_litl=True)
 efficacy_results = efficacy_agent(compound_name=COMPOUND)
 print(efficacy_results)
 
