@@ -14,13 +14,13 @@ mlflow.autolog()
 mlflow.tracing.disable_notebook_display()
 
 load_dotenv("../.env")
-lm = dspy.LM("gemini/gemini-2.5-pro", temperature=0.9, cache=False, max_tokens=80000)
-# lm = dspy.LM(
-#     "xai/grok-4-fast-reasoning", temperature=0.8, cache=False, max_tokens=80000
-# )
+# lm = dspy.LM("gemini/gemini-2.5-pro", temperature=0.9, cache=False, max_tokens=80000)
+lm = dspy.LM(
+    "xai/grok-4-fast-reasoning", temperature=0.8, cache=False, max_tokens=80000
+)
 dspy.settings.configure(lm=lm, track_usage=True)
 
-COMPOUND = "Everolimus"
+COMPOUND = "Finasteride"
 
 efficacy_agent = CFEfficacyAgent(use_litl=True)
 efficacy_results = efficacy_agent(compound_name=COMPOUND)

@@ -8,9 +8,8 @@
 backend/.env
 *.venv/
 backend/agentic_system/litl_data/litl_data.csv
-backend/agentic_system/litl_data/eval_summarized_tool_results.pkl
-backend/agentic_system/litl_data/summarized_tool_run_docs.pkl
-backend/agentic_system/litl_data/1__no_litl_run_reflections.pkl
+backend/agentic_system/litl_data/0.no_litl_runs.pkl
+backend/agentic_system/litl_data/1.no_litl_reflections.pkl
 # MLflow files
 */mlartifacts/
 *mydb.sqlite
