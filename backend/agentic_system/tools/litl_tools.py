@@ -3,12 +3,10 @@ import pickle
 import dspy
 import pandas as pd
 
-
-LITL_DATA_PATH = "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/agentic_system/litl_data/litl_data.csv"
-SUMMARIZED_TOOL_RUNS = "/Users/roshankern/Desktop/Github/cf-compound-selection-demo/backend/agentic_system/litl_data/1__no_litl_run_reflections.pkl"
+from agentic_system.litl_data.litl_utils import LITL_DATA_PATH, LITL_REFLECTIONS_PATH
 
 with open(
-    SUMMARIZED_TOOL_RUNS,
+    LITL_REFLECTIONS_PATH,
     "rb",
 ) as f:
     docs = pickle.load(f)

@@ -8,6 +8,9 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 LITL_DATA_PATH = os.path.join(os.path.dirname(__file__), "litl_data.csv")
+LITL_REFLECTIONS_PATH = os.path.join(
+    os.path.dirname(__file__), "1.no_litl_reflections.pkl"
+)
 
 
 def load_efficacy_devset(path=LITL_DATA_PATH, uniform_efficacy=False):
