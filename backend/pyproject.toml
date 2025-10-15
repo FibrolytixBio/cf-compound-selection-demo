@@ -20,9 +20,7 @@ dependencies = [
     "modal",
     "pandas",
     "seaborn",
-    "mlflow",
-    "mem0ai",
-    "google-genai" # required to use gemini with mem0
+    "mlflow"
 ]
 
 [build-system]
