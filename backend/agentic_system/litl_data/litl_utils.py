@@ -15,6 +15,7 @@ LITL_REFLECTIONS_PATH = os.path.join(
 
 def load_efficacy_devset(path=LITL_DATA_PATH, uniform_efficacy=False):
     df = pd.read_csv(path)
+
     if uniform_efficacy:
         df = df.sort_values("cf_efficacy", ascending=False)
         df = df.head(25)
