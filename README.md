@@ -1,6 +1,12 @@
 # cf-compound-selection-demo
 
-Demo for the agentic AI system to select cardiac fibrosis compounds!
+Agentic AI system to select compounds for cardiac fibrosis reversal screening!
+
+## Demo
+
+Try the system at [https://cf-compound-selection-demo.netlify.app/](https://cf-compound-selection-demo.netlify.app/). 
+
+Note that the demo does not include the use of proprietary lab-in-the-loop (LITL) assay data.
 
 ## Overview
 
@@ -78,4 +84,10 @@ We evaluate 3 efficay agents for efficacy accuracy:
 
 **None of these agents performed significantly better than a random baseline for predicting compound efficacy.**
 
-![alt text](image.png)
+The summary plot below shows the agents are spot on with some compound predictions, but generally miss. LITL tools do have a significant effect for some compounds, with LITL tools sometimes helping, sometimes hurting prediction accuracy. LLM does not have a very significant impact on predicted efficacy, but will have a significant impact on agent run cost, time, and steps.
+
+*Note: we redact compound names to protect Fibrolytix proprietary assay results.
+
+![litl results](litl_results.png)
+
+More results available at [backend/examples/litl_eval.ipynb](backend/examples/litl_eval.ipynb).
